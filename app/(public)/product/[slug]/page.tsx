@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Star, PackageOpen } from "lucide-react";
-import ProductOptions from "@/components/ProductOptions";
-import { createClient } from "@/lib/supabase/client";
+import ProductOptions from "../../../../components/ProductOptions";
+import { createClient } from "../../../../lib/supabase/client";
 
 export default function Product({ params }: { params: { slug: string } }) {
   const [p,setP]=useState<any>(null); const [loading,setLoading]=useState(true);
