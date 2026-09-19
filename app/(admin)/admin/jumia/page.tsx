@@ -5,7 +5,13 @@ import {createClient} from "../../../../lib/supabase/client";
 
 type Product={id:string;title:string;price:number|null;compare_price:number|null;images:string[];rating:number|null;review_count:number;stock_status:string|null;source_url:string;brand:string|null;is_active:boolean};
 
-function cleanJumiaUrl(value:string){const m=value.match(/https?:\/\/www\.jumia\.com\.gh\/[^\s]+/i);return m?m[0].replace(/[.,)]+$/,""):value.trim()}
+function cleanJumiaUrl(value:string){
+ const text=value.replace(/\\n/g," ").replace(/\\r/g," ").trim();
+ const m=text.match(/https?:\\/\\/(?:www\\.)?jumia\\.com\\.gh\\/[^\\s<>"']+/i);
+ return m?m[0].replace(/[.,;)]+$/,""):text;
+}
+function handleUrlChange(value:string){const extracted=cleanJumiaUrl(value);setUrl(extracted)}
+function handlePaste(e:React.ClipboardEvent<HTMLInputElement>){const pasted=e.clipboardData.getData("text");const extracted=cleanJumiaUrl(pasted);if(extracted!==pasted.trim()){e.preventDefault();setUrl(extracted)}}
 
 export default function JumiaAdmin(){
  const[url,setUrl]=useState(""),[busy,setBusy]=useState(false),[msg,setMsg]=useState(""),[ok,setOk]=useState(false),[items,setItems]=useState<Product[]>([]),[search,setSearch]=useState("");
@@ -23,7 +29,7 @@ export default function JumiaAdmin(){
    <form onSubmit={importProduct} className="mt-7 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
     <div className="mb-3 flex items-center gap-2 text-sm font-black text-slate-900"><Link2 size={16} className="text-orange-500"/> Import a product</div>
     <p className="mb-4 text-xs leading-5 text-slate-500">Paste a normal Jumia URL or the entire share message from your phone. Myshop automatically extracts the Jumia link.</p>
-    <div className="flex flex-col gap-3 lg:flex-row"><input value={url} onChange={e=>setUrl(cleanJumiaUrl(e.target.value))} placeholder="Check out this product I found: https://www.jumia.com.gh/..." className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100" required/><button className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60" disabled={busy}>{busy?<RefreshCw size={16} className="animate-spin"/>:<Plus size={16}/>} {busy?"Importing...":"Import product"}</button></div>
+    <div className="flex flex-col gap-3 lg:flex-row"><input value={url} onChange={e=>handleUrlChange(e.target.value)} onPaste={handlePaste} placeholder="Check out this product I found: https://www.jumia.com.gh/..." className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100" required/><button className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60" disabled={busy}>{busy?<RefreshCw size={16} className="animate-spin"/>:<Plus size={16}/>} {busy?"Importing...":"Import product"}</button></div>
     {msg&&<div className={"mt-4 flex items-start gap-2 rounded-xl border px-4 py-3 text-xs leading-5 "+(ok?"border-emerald-200 bg-emerald-50 text-emerald-700":"border-red-200 bg-red-50 text-red-700")}>{ok?<CheckCircle2 size={16} className="mt-0.5 shrink-0"/>:<AlertCircle size={16} className="mt-0.5 shrink-0"/>}<span>{msg}</span></div>}
    </form>
   </div>
