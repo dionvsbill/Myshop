@@ -1,4 +1,4 @@
-import LegalPage from "../../../../components/LegalPage";
+import LegalPage from "../../../components/LegalPage";
 export default function DataPolicy(){return <LegalPage title="Data & Account Policy" intro="This page gives practical instructions for managing the personal data associated with your Myshop account." updated="19 September 2026" sections={[
 {title:"What is stored",body:<p>Your account may contain identity, contact, profile, order, cart, wishlist, product-view and security-related records. Payment records contain transaction references and status rather than full card credentials.</p>},
 {title:"How to update your data",body:<p>Open Account and use Edit profile to update supported profile information. Keep delivery details accurate before placing an order. If a field cannot be changed in the interface, contact support.</p>},
