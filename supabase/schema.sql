@@ -1,0 +1,2 @@
+-- Myshop schema is applied to the connected Supabase project. Keep this file in sync with production DDL.
+-- See the project migration history / database for the canonical live schema.
