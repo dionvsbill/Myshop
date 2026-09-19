@@ -17,6 +17,7 @@ export function LiquidMorphGallery({ images, title }: LiquidMorphGalleryProps) {
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
   const [interacted, setInteracted] = useState(false);
+  const [idle, setIdle] = useState(false);
   const [ripple, setRipple] = useState<{ x: number; y: number; id: number } | null>(null);
   const filmRef = useRef<HTMLDivElement>(null);
   const thumbRefs = useRef<Record<number, HTMLButtonElement | null>>({});
@@ -32,12 +33,16 @@ export function LiquidMorphGallery({ images, title }: LiquidMorphGalleryProps) {
   const touch = useCallback(() => {
     lastActivity.current = Date.now();
     setInteracted(true);
+    setIdle(false);
   }, []);
 
   useEffect(() => {
     if (items.length < 2) return;
     const idle = window.setInterval(() => {
-      if (!paused && Date.now() - lastActivity.current >= 5000) setActive((v) => (v + 1) % items.length);
+      const now = Date.now();
+      const waiting = now - lastActivity.current >= 5000;
+      setIdle(waiting);
+      if (!paused && waiting) setActive((v) => (v + 1) % items.length);
     }, 3000);
     return () => window.clearInterval(idle);
   }, [items.length, paused]);
@@ -78,7 +83,7 @@ export function LiquidMorphGallery({ images, title }: LiquidMorphGalleryProps) {
       <motion.div style={{ rotateX, rotateY, perspective: 1000 }} className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-[0_20px_60px_rgba(0,0,0,.10)]">
         <div className="pointer-events-none absolute inset-0 opacity-90" style={{ backgroundImage: gradients[active % gradients.length] }} />
         <div className="absolute left-0 right-0 top-0 z-20 h-1 overflow-hidden bg-black/5">
-          {!interacted && !paused && items.length > 1 && <motion.div key={active} className="h-full origin-left bg-[#f68b1e]" initial={{ width: "0%" }} animate={{ width: "100%" }} transition={{ duration: 3, ease: "linear" }} />}
+          {idle && !paused && items.length > 1 && <motion.div key={active} className="h-full origin-left bg-[#f68b1e]" initial={{ width: "0%" }} animate={{ width: "100%" }} transition={{ duration: 3, ease: "linear" }} />}
         </div>
         <div className="group relative flex min-h-[390px] items-center justify-center overflow-hidden p-5" onMouseMove={onMainMove} onMouseLeave={resetMain}>
           <AnimatePresence mode="wait">
@@ -95,7 +100,7 @@ export function LiquidMorphGallery({ images, title }: LiquidMorphGalleryProps) {
               draggable={false}
             />
           </AnimatePresence>
-          <motion.div className="pointer-events-none absolute z-30 hidden h-16 w-16 rounded-full border border-white bg-white/10 shadow-[0_0_0_1px_rgba(0,0,0,.15)] backdrop-blur-sm md:block" style={{ left: "calc(50% + " + String(lensX) + "px)", top: "calc(50% + " + String(lensY) + "px)" }} />
+          <motion.div className="pointer-events-none absolute z-30 hidden h-16 w-16 rounded-full border border-white bg-white/10 shadow-[0_0_0_1px_rgba(0,0,0,.15)] backdrop-blur-sm md:block" style={{ left: "50%", top: "50%", x: lensX, y: lensY }} />
           {items.length > 1 && <>
             <button type="button" aria-label="Previous image" onClick={() => { touch(); setActive((v) => (v - 1 + items.length) % items.length); }} className="absolute left-4 z-40 rounded-full bg-white/90 p-3 opacity-0 shadow-md transition group-hover:opacity-100"><ChevronLeft /></button>
             <button type="button" aria-label="Next image" onClick={() => { touch(); setActive((v) => (v + 1) % items.length); }} className="absolute right-4 z-40 rounded-full bg-white/90 p-3 opacity-0 shadow-md transition group-hover:opacity-100"><ChevronRight /></button>
