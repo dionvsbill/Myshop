@@ -12,7 +12,7 @@ export default async function Home() {
     s.from("categories").select("id,name,slug").limit(12),
     s.from("products").select("id,slug,title,price,compare_price,images,is_featured,rating,review_count,stock,created_at,categories(name)").eq("is_active", true).limit(100),
   ]);
-  const products = all || [];
+  const products = (all || []).map((p: any) => ({ ...p, categories: Array.isArray(p.categories) ? (p.categories[0] || null) : p.categories }));
   const featured = [...products].sort((a: any, b: any) => Number(b.is_featured) - Number(a.is_featured) || Number(b.rating || 0) - Number(a.rating || 0)).slice(0, 8);
   const deals = products.filter((p: any) => p.compare_price && Number(p.compare_price) > Number(p.price)).slice(0, 10);
   const rated = [...products].sort((a: any, b: any) => Number(b.rating || 0) - Number(a.rating || 0)).slice(0, 10);
