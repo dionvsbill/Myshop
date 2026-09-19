@@ -13,3 +13,12 @@ button,input,select,textarea{font:inherit}
 .store-card{@apply rounded-2xl border border-zinc-200/80 bg-white shadow-[0_1px_2px_rgba(0,0,0,.03)]}
 .store-input{@apply w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-zinc-900 focus:ring-4 focus:ring-zinc-900/5}
 @layer components{.page-title{@apply text-3xl font-black tracking-[-.04em] sm:text-4xl}.eyebrow{@apply text-[11px] font-bold uppercase tracking-[.2em] text-zinc-500}.section-title{@apply text-2xl font-black tracking-[-.03em] sm:text-3xl}.btn-primary{@apply inline-flex items-center justify-center rounded-xl bg-zinc-950 px-5 py-3 text-sm font-bold text-white transition hover:bg-zinc-800 active:scale-[.98]}.btn-secondary{@apply inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-5 py-3 text-sm font-bold transition hover:bg-zinc-50}}
+
+@keyframes galleryCinematic{0%{opacity:0;transform:scale(1.06) translateX(1.5%)}45%{opacity:1}100%{opacity:1;transform:scale(1) translateX(0)}}
+@keyframes galleryDynamic{0%{opacity:0;transform:scale(.96) rotate(-.4deg)}35%{opacity:1;transform:scale(1.02) rotate(0)}100%{opacity:1;transform:scale(1) rotate(.2deg)}}
+@keyframes galleryKenBurns{0%{transform:scale(1.02) translate3d(0,0,0)}50%{transform:scale(1.11) translate3d(-1.5%,-.8%,0)}100%{transform:scale(1.02) translate3d(1%,.5%,0)}}
+.gallery-cinematic{animation:galleryCinematic .65s cubic-bezier(.2,.8,.2,1)}
+.gallery-dynamic{animation:galleryDynamic .8s cubic-bezier(.2,.7,.2,1)}
+.gallery-kenburns{animation:galleryKenBurns 5s ease-in-out infinite}
+.gallery-static{animation:none}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.gallery-cinematic,.gallery-dynamic,.gallery-kenburns{animation:none}}
