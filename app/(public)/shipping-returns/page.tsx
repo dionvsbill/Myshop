@@ -1,0 +1,10 @@
+import LegalPage from "../../../../components/LegalPage";
+export default function ShippingReturns(){return <LegalPage title="Shipping, Delivery, Returns & Refunds" intro="This page explains the customer process from checkout through delivery, and what to do when an order is delayed, incorrect, damaged or eligible for return." updated="19 September 2026" sections={[
+{title:"Before ordering",body:<p>Confirm your name, phone number, location and delivery details. Check the product title, variant, quantity, price and available stock before payment.</p>},
+{title:"Order confirmation",body:<p>After successful payment verification, Myshop creates the order and records an initial tracking event. Your order number is available from the account order area.</p>},
+{title:"Delivery",body:<p>Delivery timing can depend on location, seller preparation, courier availability, weekends, public holidays and product availability. Tracking information may be updated as fulfillment progresses.</p>},
+{title:"Incorrect or damaged items",body:<p>Inspect your package promptly. If an item is incorrect, damaged or materially different from its listing, contact support as soon as possible with the order number, description and clear photos where useful.</p>},
+{title:"Returns",body:<p>Return eligibility can depend on product type, condition, hygiene considerations, whether the item was used, and applicable seller or platform rules. Keep packaging and accessories until you are satisfied with the purchase.</p>},
+{title:"Refunds",body:<p>Where a refund is approved, the timing of funds reaching the original payment method can depend on the payment provider and banking network. Myshop may need to verify the order and return condition before approving a refund.</p>},
+{title:"Cancellation",body:<p>Request cancellation as early as possible. An order that has already entered preparation or dispatch may no longer be cancellable and may instead need to follow the applicable return process.</p>}
+]}/>}
