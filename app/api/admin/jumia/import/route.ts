@@ -1,7 +1,7 @@
 import {NextRequest,NextResponse} from "next/server";
 import {createClient} from "../../../../lib/supabase/server";
 function clean(v:string){return v.replace(/&amp;/g,"&").replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&lt;/g,"<").replace(/&gt;/g,">").trim()}
-function meta(html:string,name:string){const r=new RegExp('<meta[^>]+(?:property|name)=["\\']'+name+'["\\'][^>]+content=["\\']([^"\\']+)["\\']','i').exec(html)||new RegExp('<meta[^>]+content=["\\']([^"\\']+)["\\'][^>]+(?:property|name)=["\\']'+name+'["\\']','i').exec(html);return r?clean(r[1]):""}
+function meta(html:string,name:string){const patterns=[new RegExp('<meta[^>]+(?:property|name)=["]'+name+'["][^>]+content=["]([^"]+)["]','i'),new RegExp('<meta[^>]+content=["]([^"]+)["][^>]+(?:property|name)=["]'+name+'["]','i')];for(const r of patterns){const m=r.exec(html);if(m)return clean(m[1])}return ""}
 function scripts(html:string){return [...html.matchAll(/<script[^>]*type=["']application\\/ld\\+json["'][^>]*>([\\s\\S]*?)<\\/script>/gi)].map(x=>x[1].trim()).flatMap(x=>{try{return [JSON.parse(x)]}catch{return []}})}
 function findProduct(v:any):any{if(!v)return null;if(Array.isArray(v)){for(const x of v){const p=findProduct(x);if(p)return p}return null}if(typeof v!=="object")return null;if(v["@type"]==="Product"||(Array.isArray(v["@type"])&&v["@type"].includes("Product")))return v;for(const x of Object.values(v)){const p=findProduct(x);if(p)return p}return null}
 function arr(v:any){return Array.isArray(v)?v:[v].filter(Boolean)}
