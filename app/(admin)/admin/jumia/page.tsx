@@ -60,7 +60,7 @@ export default function JumiaAdmin(){
 
   {filtered.length===0?<div className={styles.jumiaEmpty}><ImageIcon size={40}/><h3>{items.length?"No matching products":"Your catalogue is empty"}</h3><p>{items.length?"Try another search.":"Paste a Jumia product link above to import the first product."}</p></div>:
   <div className={styles.jumiaGrid}>{filtered.map(p=><article className={styles.jumiaCard} key={p.id}>
-   <div className={styles.jumiaImage}>{p.images?.[0]?<img src={p.images[0]} alt={p.title}/>:<ImageIcon size={40}/>}<span>JUMIA</span></div>
+   <div className={styles.jumiaImage}>{p.images?.[0]?<img src={"/api/jumia/image?url="+encodeURIComponent(p.images[0])} alt={p.title}/>:<ImageIcon size={40}/>}<span>JUMIA</span></div>
    <div className={styles.jumiaCardBody}><div className={styles.jumiaMeta}><small>{p.brand||"Jumia product"}</small>{p.rating!=null&&<b>★ {p.rating}</b>}</div><h3>{p.title}</h3><div className={styles.jumiaPrice}><strong>{p.price!=null?"GH₵ "+Number(p.price).toLocaleString():"Price on Jumia"}</strong>{p.compare_price!=null&&<del>GH₵ {Number(p.compare_price).toLocaleString()}</del>}</div><div className={styles.jumiaCardActions}><a href={p.source_url} target="_blank" rel="noreferrer">View on Jumia <ArrowUpRight size={14}/></a><button onClick={()=>remove(p.id)} aria-label="Remove product"><Trash2 size={15}/></button></div></div>
   </article>)}</div>}
  </section>
