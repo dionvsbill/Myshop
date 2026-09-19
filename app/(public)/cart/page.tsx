@@ -23,8 +23,7 @@ if(searchParams.payment==="success"&&searchParams.reference){
           const rawShipping=paystack?.data?.metadata?.shipping;
           const shipping=typeof rawShipping==="string"?(()=>{try{return JSON.parse(rawShipping)}catch{return {}}})():rawShipping||{};
           const result=await admin.rpc("place_order_for_payment",{p_user_id:user.user.id,shipping_address:shipping,p_payment_reference:searchParams.reference});
-          if(!result.error&&result.data) paymentOrder=String(result.data);
-          else paymentError="Payment was confirmed, but order creation failed: "+(result.error?.message||"Unknown database error")+". Your payment reference has been preserved; please contact support.";
+          if(!result.error&&result.data){paymentOrder=String(result.data);await admin.from("payment_transactions").update({status:"ORDER_CREATED",paystack_status:"success",order_id:String(result.data),verified_at:new Date().toISOString(),order_created_at:new Date().toISOString(),last_error:null}).eq("reference",searchParams.reference);}else{await admin.from("payment_transactions").update({status:"PAYMENT_VERIFIED_ORDER_FAILED",paystack_status:"success",verified_at:new Date().toISOString(),last_error:result.error?.message||"Unknown database error"}).eq("reference",searchParams.reference);paymentError="Payment was confirmed, but order creation failed: "+(result.error?.message||"Unknown database error")+". Your payment reference has been preserved; please contact support.";}
         }else paymentError="Payment was confirmed, but the payment amount or account did not match this cart. Please contact support with your payment reference.";
       }else paymentError="Paystack did not confirm this payment.";
     }catch{paymentError="Payment was confirmed, but order processing could not be completed. Please contact support with your payment reference."}
