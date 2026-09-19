@@ -2,7 +2,7 @@ import Link from "next/link";
 import {Package,Plus,Search,ArrowUpRight} from "lucide-react";
 import {createClient} from "../../../../lib/supabase/server";
 import EditProductModal from "../../../../components/EditProductModal";
-import styles from "../../../../admin/admin.module.css";
+import styles from "../../../admin/admin.module.css";
 
 export default async function AdminProducts(){
  const s=await createClient();
