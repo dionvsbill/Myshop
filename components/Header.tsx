@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Heart, Menu, Search, ShoppingBag, User, X } from "lucide-react";
+import { Heart, Menu, Search, ShoppingBag, User, X, ChevronDown } from "lucide-react";
 import { createClient } from "../lib/supabase/client";
 import { useEffect, useState } from "react";
 
@@ -18,55 +18,47 @@ export default function Header() {
   }, []);
 
   useEffect(() => {
-    if (!user) {
-      setCart(0);
-      return;
-    }
+    if (!user) return setCart(0);
     createClient().from("cart_items").select("id", { count: "exact", head: true }).then(({ count }) => setCart(count || 0));
   }, [user]);
 
   return (
     <header className="sticky top-0 z-50">
-      <div className="bg-zinc-950 text-[11px] font-semibold tracking-wide text-white">
-        <div className="container flex h-8 items-center justify-center">
-          Free delivery on selected orders <span className="mx-2 text-white/30">•</span> Secure checkout <span className="mx-2 text-white/30">•</span> GHS pricing
+      <div className="bg-[#f68b1e] text-white">
+        <div className="container flex h-8 items-center justify-between text-[11px] font-semibold">
+          <span>Free delivery on selected orders</span><span className="hidden sm:block">Secure payments · GHS pricing</span><span>Help Centre</span>
         </div>
       </div>
-      <div className="border-b border-zinc-200/80 bg-white/90 shadow-[0_4px_20px_rgba(0,0,0,.04)] backdrop-blur-xl">
-        <div className="container flex h-[76px] items-center gap-3">
-          <button className="rounded-xl p-2 hover:bg-zinc-100 md:hidden" onClick={() => setOpen(!open)}>{open ? <X /> : <Menu />}</button>
-          <Link href="/" className="mr-3 text-[25px] font-black tracking-[-.07em]">MYSHOP<span className="text-zinc-300">.</span></Link>
-          <nav className="hidden items-center gap-1 md:flex">
-            {["Shop", "New arrivals", "Collections"].map(x => (
-              <Link key={x} href="/products" className="rounded-xl px-4 py-2.5 text-[13px] font-bold text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950">{x}</Link>
-            ))}
-          </nav>
-          <form action="/products" className="ml-auto hidden w-full max-w-[390px] lg:block">
-            <div className="flex h-11 items-center rounded-2xl border border-zinc-200 bg-zinc-50 px-3 shadow-inner focus-within:border-zinc-400 focus-within:bg-white">
-              <Search size={17} className="text-zinc-400" />
-              <input name="q" placeholder="Search products..." className="w-full bg-transparent px-3 text-sm outline-none" />
-            </div>
+      <div className="bg-[#f68b1e] text-white shadow-md">
+        <div className="container flex min-h-[66px] items-center gap-3 py-2">
+          <button className="rounded-md p-2 hover:bg-black/10 md:hidden" onClick={() => setOpen(!open)}>{open ? <X /> : <Menu />}</button>
+          <Link href="/" className="shrink-0 text-[25px] font-black tracking-[-.06em]">MYSHOP</Link>
+          <form action="/products" className="flex h-11 min-w-0 flex-1 items-center overflow-hidden rounded-md bg-white text-zinc-800 shadow-sm">
+            <Search size={19} className="ml-3 shrink-0 text-zinc-400" />
+            <input name="q" placeholder="Search products, brands and categories" className="min-w-0 flex-1 bg-transparent px-3 text-sm outline-none" />
+            <button className="h-full bg-[#f68b1e] px-5 text-sm font-bold text-white hover:bg-[#df7710]">Search</button>
           </form>
-          <div className="ml-auto flex items-center gap-1 lg:ml-3">
-            <Link href="/products" className="rounded-xl p-2.5 hover:bg-zinc-100 lg:hidden"><Search size={20} /></Link>
-            <button className="hidden rounded-xl p-2.5 hover:bg-zinc-100 sm:block"><Heart size={20} /></button>
-            {user ? <Link href="/account" className="rounded-xl p-2.5 hover:bg-zinc-100"><User size={20} /></Link> : <Link href="/login" className="hidden rounded-xl bg-zinc-950 px-4 py-2.5 text-sm font-bold text-white sm:block">Sign in</Link>}
-            <Link href="/cart" className="relative rounded-xl p-2.5 hover:bg-zinc-100">
-              <ShoppingBag size={21} />
-              {cart > 0 && <span className="absolute right-0 top-0 min-w-5 rounded-full bg-zinc-950 px-1 text-center text-[10px] font-bold leading-5 text-white ring-2 ring-white">{cart}</span>}
+          <div className="hidden items-center gap-1 sm:flex">
+            <Link href={user ? "/account" : "/login"} className="flex items-center gap-2 rounded-md px-3 py-2 hover:bg-black/10">
+              <User size={21}/><span className="hidden lg:block text-xs font-bold">{user ? "Account" : "Sign In"}</span><ChevronDown size={13} className="hidden lg:block"/>
+            </Link>
+            <button className="rounded-md p-2.5 hover:bg-black/10"><Heart size={21}/></button>
+            <Link href="/cart" className="relative rounded-md p-2.5 hover:bg-black/10">
+              <ShoppingBag size={22}/>
+              {cart > 0 && <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-white px-1 text-center text-[10px] font-black leading-5 text-[#f68b1e]">{cart}</span>}
             </Link>
           </div>
         </div>
-        {open && (
-          <div className="border-t bg-white md:hidden">
-            <nav className="container grid gap-1 py-3">
-              {["Shop", "New arrivals", "Collections"].map(x => (
-                <Link key={x} href="/products" onClick={() => setOpen(false)} className="rounded-xl px-4 py-3 font-semibold hover:bg-zinc-100">{x}</Link>
-              ))}
-            </nav>
+        <nav className="hidden border-t border-white/15 md:block">
+          <div className="container flex h-10 items-center gap-7 text-xs font-bold">
+            <Link href="/products" className="hover:underline">Categories</Link>
+            <Link href="/products" className="hover:underline">Shop</Link>
+            <Link href="/products" className="hover:underline">New Arrivals</Link>
+            <Link href="/products" className="hover:underline">Deals</Link>
           </div>
-        )}
+        </nav>
       </div>
+      {open && <div className="border-b bg-white shadow-lg md:hidden"><nav className="container grid gap-1 py-3">{["Categories","Shop","New Arrivals","Deals","Account","Cart"].map(x => <Link key={x} href={x==="Account"?(user?"/account":"/login"):x==="Cart"?"/cart":"/products"} onClick={()=>setOpen(false)} className="rounded-md px-4 py-3 text-sm font-semibold hover:bg-orange-50">{x}</Link>)}</nav></div>}
     </header>
   );
 }
