@@ -4,7 +4,7 @@ import { createClient } from "../../../lib/supabase/server";
 
 export default async function Products({searchParams}:{searchParams:{q?:string;category?:string}}){
   const s=await createClient();
-  let q=s.from("products").select("*,categories(name,slug)").eq("is_active",true).order("created_at",{ascending:false});
+  let q=s.from("products").select("*,categories!inner(name,slug)").eq("is_active",true).order("created_at",{ascending:false});
   if(searchParams.q) q=q.ilike("title","%"+searchParams.q+"%");
   if(searchParams.category) q=q.eq("categories.slug",searchParams.category);
   const {data,error}=await q;
