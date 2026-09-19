@@ -4,7 +4,7 @@ import { BarChart3, ClipboardList, FolderTree, LayoutDashboard, Package, Setting
 import { createClient } from "../../lib/supabase/server";
 import styles from "../../components/sidebar.module.css";
 
-const links=,"Products",Package],["/admin/categories","Categories",FolderTree],["/admin/orders","Orders",ClipboardList],["/admin/users","Customers",Users],["/admin/analytics","Insights",BarChart3],["/admin/settings","Settings",Settings]] as const;
+const links=[["/admin","Dashboard",LayoutDashboard],["/admin/products","Products",Package],["/admin/jumia","Jumia Store",ShoppingCart],["/admin/categories","Categories",FolderTree],["/admin/orders","Orders",ClipboardList],["/admin/users","Customers",Users],["/admin/analytics","Insights",BarChart3],["/admin/settings","Settings",Settings]] as const;
 
 export default async function AdminLayout({children}:{children:React.ReactNode}){
  const s=await createClient();const {data:u}=await s.auth.getUser();if(!u.user)redirect("/login");
