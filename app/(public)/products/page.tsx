@@ -1,52 +1,12 @@
 import Link from "next/link";
 import { PackageOpen, Search, ShoppingBag, Star } from "lucide-react";
 import { createClient } from "../../../lib/supabase/server";
+import RecommendationTracker from "../../../components/RecommendationTracker";
 
-export default async function Products({ searchParams }: { searchParams: { q?: string; category?: string } }) {
-  const s = await createClient();
-  let q = s.from("products").select("*,categories!inner(name,slug)").eq("is_active", true).order("created_at", { ascending: false });
-  if (searchParams.q) q = q.ilike("title", "%" + searchParams.q + "%");
-  if (searchParams.category) q = q.eq("categories.slug", searchParams.category);
-  const { data, error } = await q;
-
-  if (error) {
-    return <section className="py-20 text-center"><h1 className="text-2xl font-black">Unable to load products</h1><p className="mt-2 text-sm text-neutral-500">{error.message}</p></section>;
-  }
-
-  return (
-    <section>
-      <div className="border-b pb-8">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-500">Catalogue</p>
-        <div className="mt-3 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-          <div><h1 className="text-4xl font-black tracking-tight">All products</h1><p className="mt-2 text-sm text-neutral-500">{data?.length || 0} products available</p></div>
-          <form action="/products" className="flex w-full max-w-sm items-center rounded-xl border bg-white px-3">
-            <Search size={18} className="text-neutral-400" />
-            <input name="q" defaultValue={searchParams.q || ""} placeholder="Search the catalogue" className="w-full px-3 py-3 text-sm outline-none" />
-          </form>
-        </div>
-      </div>
-
-      <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-9 md:grid-cols-3 lg:grid-cols-4">
-        {(data || []).map((p) => (
-          <article key={p.id} className="group">
-            <Link href={"/product/" + p.slug}>
-              <div className="relative aspect-square overflow-hidden rounded-2xl bg-neutral-100">
-                {p.images?.[0] ? <img src={p.images[0]} alt={p.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /> : <div className="grid h-full place-items-center"><PackageOpen className="text-neutral-300" size={46}/></div>}
-                {p.compare_price && Number(p.compare_price) > Number(p.price) && <span className="absolute left-3 top-3 rounded-full bg-white px-3 py-1 text-xs font-bold">Sale</span>}
-              </div>
-              <div className="mt-4 flex items-start justify-between gap-3">
-                <div className="min-w-0"><h2 className="line-clamp-2 text-sm font-semibold">{p.title}</h2><p className="mt-1 text-xs text-neutral-500">{p.categories?.name}</p></div>
-                <span className="shrink-0 text-sm font-bold">GHS {Number(p.price).toFixed(2)}</span>
-              </div>
-              <div className="mt-2 flex items-center gap-1 text-xs text-neutral-500"><Star size={14} className="fill-current" /> {Number(p.rating || 0).toFixed(1)} · {p.review_count || 0} reviews</div>
-            </Link>
-            <form action="/api/cart" method="post" className="mt-3">
-              <input type="hidden" name="product_id" value={p.id} />
-              <button className="flex w-full items-center justify-center gap-2 rounded-xl bg-neutral-950 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800"><ShoppingBag size={16}/> Add to cart</button>
-            </form>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
+export default async function Products({searchParams}:{searchParams:{q?:string;category?:string}}){
+ const s=await createClient(); let q=s.from("products").select("*,categories!inner(name,slug)").eq("is_active",true).order("created_at",{ascending:false});
+ if(searchParams.q)q=q.ilike("title","%"+searchParams.q+"%"); if(searchParams.category)q=q.eq("categories.slug",searchParams.category);
+ const {data,error}=await q;
+ if(error)return <section className="py-20 text-center"><h1 className="text-2xl font-bold">Unable to load products</h1><p className="mt-2 text-sm text-neutral-500">{error.message}</p></section>;
+ return <section><RecommendationTracker query={searchParams.q}/><div className="rounded-lg bg-white p-4 shadow-sm"><div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div><p className="eyebrow">Marketplace</p><h1 className="page-title mt-1">All products</h1><p className="mt-1 text-sm text-neutral-500">{data?.length||0} products available</p></div><form action="/products" className="flex h-11 w-full max-w-md items-center rounded-md border bg-white"><Search size={18} className="ml-3 text-neutral-400"/><input name="q" defaultValue={searchParams.q||""} placeholder="Search products, brands and categories" className="w-full px-3 text-sm outline-none"/><button className="h-full bg-[#f68b1e] px-5 text-sm font-bold text-white">Search</button></form></div></div>
+ <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">{(data||[]).map((p:any)=><article key={p.id} className="group overflow-hidden rounded-md border bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"><Link href={"/product/"+p.slug}><div className="relative aspect-square overflow-hidden bg-white">{p.images?.[0]?<img src={p.images[0]} alt={p.title} className="h-full w-full object-contain p-2 transition duration-500 group-hover:scale-105"/>:<div className="grid h-full place-items-center"><PackageOpen className="text-neutral-300" size={44}/></div>}{p.compare_price&&Number(p.compare_price)>Number(p.price)&&<span className="absolute left-2 top-2 bg-[#f68b1e] px-2 py-1 text-[10px] font-bold text-white">DEAL</span>}</div><div className="p-3"><h2 className="line-clamp-2 min-h-10 text-sm">{p.title}</h2><p className="mt-2 text-lg font-bold">GHS {Number(p.price).toFixed(2)}</p>{p.compare_price&&<p className="text-xs text-neutral-400 line-through">GHS {Number(p.compare_price).toFixed(2)}</p>}<div className="mt-2 flex items-center gap-1 text-xs text-neutral-500"><Star size={13} className="fill-current text-[#f68b1e]"/> {Number(p.rating||0).toFixed(1)} · {p.review_count||0}</div></div></Link><form action="/api/cart" method="post" className="p-3 pt-0"><input type="hidden" name="product_id" value={p.id}/><button className="flex w-full items-center justify-center gap-2 rounded-md bg-[#f68b1e] py-2.5 text-sm font-bold text-white hover:bg-[#df7710]"><ShoppingBag size={15}/> Add to cart</button></form></article>)}</div></section>
