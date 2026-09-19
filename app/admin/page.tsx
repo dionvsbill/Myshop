@@ -67,7 +67,7 @@ export default function AdminPage(){
  const chart=useMemo(()=>months.map(m=>({label:m.label,users:users.filter(u=>{const d=new Date(u.created_at);return `${d.getFullYear()}-${d.getMonth()}`===m.key}).length,orders:orders.filter(o=>{const d=new Date(o.created_at);return `${d.getFullYear()}-${d.getMonth()}`===m.key}).length,revenue:orders.filter(o=>{const d=new Date(o.created_at);return `${d.getFullYear()}-${d.getMonth()}`===m.key&&Boolean(o.payment_reference&&o.paid_at)}).reduce((n,o)=>n+Number(o.total||0),0)})),[users,orders]);
  const maxChart=Math.max(1,...chart.map(x=>Math.max(x.users,x.orders)));
 
- const menu=[["overview","Overview",LayoutDashboard],["orders","Orders",ClipboardList],["products","Products",Package],["categories","Categories",FolderTree],["users","Customers",Users],["activity","Activity",Activity],["settings","Settings",Settings]];
+ const menu: Array<[string,string,typeof LayoutDashboard]>=[["overview","Overview",LayoutDashboard],["orders","Orders",ClipboardList],["products","Products",Package],["categories","Categories",FolderTree],["users","Customers",Users],["activity","Activity",Activity],["settings","Settings",Settings]];
 
  return <section className={styles.shell}>
   <aside className={styles.sidebar}>
@@ -77,7 +77,7 @@ export default function AdminPage(){
    <div className={styles.bottom}><Link href="/">View storefront</Link><button onClick={async()=>{await createClient().auth.signOut();location.href="/"}}><LogOut size={17}/>Log out</button></div>
   </aside>
   <main className={styles.main}>
-   <header><div><small>MYSHOP ADMIN</small><h1>{menu.find(x=>x[0]===tab)?.[1]}</h1></div><div className={styles.tools}><div><Search size={17}/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search management data"/></div><button onClick={()=>{setLoading(true);void load()}}><RefreshCw size={18}/></button></div></header>
+   <header><div><small>MYSHOP ADMIN</small><h1>{menu.find(x=>x[0]===tab)?.[1] ?? "Overview"}</h1></div><div className={styles.tools}><div><Search size={17}/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search management data"/></div><button onClick={()=>{setLoading(true);void load()}}><RefreshCw size={18}/></button></div></header>
    {msg&&<div className={styles.notice}>{msg}</div>}
    {loading?<div className={styles.loading}><RefreshCw className={styles.spin}/>Loading admin dashboard...</div>:<div className={styles.content}>
     {tab==="overview"&&<><div className={styles.stats}>
