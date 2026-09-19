@@ -20,14 +20,19 @@
     "react-dom": "18.3.1",
     "react-hook-form": "latest",
     "tailwind-merge": "latest",
-    "zod": "latest",
-    "typescript": "latest",
-    "@types/node": "latest",
-    "@types/react": "latest",
-    "@types/react-dom": "latest",
-    "autoprefixer": "latest",
-    "postcss": "latest",
-    "tailwindcss": "latest"
+    "zod": "latest"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@types/node": "20.17.30",
+    "@types/react": "18.3.18",
+    "@types/react-dom": "18.3.5",
+    "autoprefixer": "10.4.20",
+    "postcss": "8.5.3",
+    "tailwindcss": "3.4.17",
+    "typescript": "5.6.3"
+  },
+  "engines": {
+    "node": ">=20.10.0 <25",
+    "npm": ">=10"
+  }
 }
