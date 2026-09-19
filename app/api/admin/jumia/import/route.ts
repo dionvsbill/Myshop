@@ -11,7 +11,7 @@ function slugify(s:string){return s.toLowerCase().replace(/[^a-z0-9]+/g,"-").rep
 function productId(url:string){return (url.match(/-(\d+)\.html(?:$|\?)/i)||[])[1]||null}
 function fromReader(markdown:string,url:string){
  const title=(markdown.match(/^#\s+(.+)$/m)||[])[1]?.trim()||"";
- const images=Array.from(markdown.matchAll(/!\[[^\]]*\]\((https?:\/\/[^\s)]+)\)/g)).map(m=>m[1]).filter((x,i,a)=>a.indexOf(x)===i);
+ const images:string[]=[];const re=/!\[[^\]]*\]\((https?:\/\/[^\s)]+)\)/g;let im:RegExpExecArray|null;while((im=re.exec(markdown))!==null){if(images.indexOf(im[1])===-1)images.push(im[1])}
  const priceMatch=markdown.match(/(?:GH₵|GHS|GH\\s*₵)\s*([0-9][0-9,]*(?:\.\d{1,2})?)/i);
  const ratingMatch=markdown.match(/([0-5](?:\.\d)?)\s*(?:out of 5|\/5)/i);
  const reviewMatch=markdown.match(/([0-9][0-9,]*)\s*(?:ratings?|reviews?)/i);
@@ -21,12 +21,17 @@ export async function POST(req:NextRequest){
  const s=await createClient();const {data:u}=await s.auth.getUser();if(!u.user)return NextResponse.json({error:"Authentication required"},{status:401});
  const {data:profile}=await s.from("profiles").select("role").eq("id",u.user.id).maybeSingle();if(profile?.role!=="ADMIN")return NextResponse.json({error:"Admin access required"},{status:403});
  const body=await req.json();const url=typeof body?.url==="string"?body.url.trim():"";
- const normalizedUrl=url.replace(/^http:\/\//i,"https://").replace(/^https:\/\/(?!www\.)jumia\.com\.gh\//i,"https://www.jumia.com.gh/");\n if(!/^https:\/\/www\.jumia\.com\.gh\//i.test(normalizedUrl))return NextResponse.json({error:"Paste a Jumia Ghana product URL."},{status:400});
+ const normalizedUrl=url.replace(/^http:\/\//i,"https://").replace(/^https:\/\/(?!www\.)jumia\.com\.gh\//i,"https://www.jumia.com.gh/");
+ if(!/^https:\/\/www\.jumia\.com\.gh\//i.test(normalizedUrl))return NextResponse.json({error:"Paste a Jumia Ghana product URL."},{status:400});
  let html="";let directStatus=200;
- try{const res=await fetch(url,{headers:{"User-Agent":"Mozilla/5.0 (compatible; Myshop/1.0)","Accept":"text/html,application/xhtml+xml"},cache:"no-store"});directStatus=res.status;if(res.ok)html=await res.text()}catch{}
+ try{const res=await fetch(normalizedUrl,{headers:{"User-Agent":"Mozilla/5.0 (compatible; Myshop/1.0)","Accept":"text/html,application/xhtml+xml"},cache:"no-store"});directStatus=res.status;if(res.ok)html=await res.text()}catch{}
  let p:any=findProduct(scripts(html));let fallback:any=null;
  if(!p||!p.name){
-   try{const reader=await fetch("https://r.jina.ai/"+url,{headers:{"Accept":"text/plain","User-Agent":"Myshop Jumia importer"},cache:"no-store"});if(reader.ok)fallback=fromReader(await reader.text(),url)}catch{}
+   const readerUrls=["https://r.jina.ai/"+normalizedUrl,"https://r.jina.ai/http://www.jumia.com.gh/"+normalizedUrl.split("/").slice(3).join("/")];
+   for(const readerUrl of readerUrls){try{const reader=await fetch(readerUrl,{headers:{"Accept":"text/plain","User-Agent":"Myshop Jumia importer"},cache:"no-store"});if(reader.ok){const text=await reader.text();const candidate=fromReader(text,normalizedUrl);if(candidate.title||candidate.images.length||candidate.price!=null){fallback=candidate;break}}}catch{}}
+ }
+ if(!p||!p.name){
+   try{const translated="https://www-jumia-com-gh.translate.goog/"+normalizedUrl.split("/").slice(3).join("/")+"?_x_tr_sl=auto&_x_tr_tl=en&_x_tr_hl=en";const res=await fetch(translated,{headers:{"User-Agent":"Mozilla/5.0","Accept":"text/html,application/xhtml+xml"},cache:"no-store"});if(res.ok){const translatedHtml=await res.text();p=findProduct(scripts(translatedHtml));if(!p||!p.name){const candidate=fromReader(translatedHtml,normalizedUrl);if(candidate.title||candidate.images.length||candidate.price!=null)fallback={...(fallback||{}),...candidate}}if(!html)html=translatedHtml}}catch{}
  }
  const title=clean(p?.name||meta(html,"og:title")||meta(html,"twitter:title")||fallback?.title||"");
  if(!title){
