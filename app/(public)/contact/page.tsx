@@ -1,0 +1,8 @@
+import LegalPage from "../../../../components/LegalPage";
+export default function Contact(){return <LegalPage title="Contact Myshop" intro="Use this page for order questions, account help, payment issues, privacy requests, returns, delivery problems and security reports." updated="19 September 2026" sections={[
+{title:"Customer support",body:<p>For account and order support, sign in and provide your order number, the email on the account and a clear description of the issue. This helps us locate the correct record and avoid exposing another customer's information.</p>},
+{title:"Payment problems",body:<p>If money was debited but an order was not created, do not immediately pay again. Keep the Paystack transaction reference and contact support so the transaction can be verified and reconciled.</p>},
+{title:"Delivery problems",body:<p>For a late, missing, damaged or incorrect delivery, provide the order number, delivery details, date received or expected, and relevant photos or evidence.</p>},
+{title:"Privacy and data requests",body:<p>For access, correction, deletion or privacy questions, identify the account email and describe the request. Never send your password, OTP, PIN or full card details.</p>},
+{title:"Security reports",body:<p>If you discover a security vulnerability, avoid accessing other users' data or causing damage. Report the affected page, steps to reproduce and relevant timestamps to support so the issue can be investigated responsibly.</p>}
+]}/>}
