@@ -1,5 +1,5 @@
 import {NextRequest,NextResponse} from "next/server";
-import {createClient} from "../../../../lib/supabase/server";
+import {createClient} from "../../../../../lib/supabase/server";
 function clean(v:string){return v.replace(/&amp;/g,"&").replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&lt;/g,"<").replace(/&gt;/g,">").trim()}
 function meta(html:string,name:string){const patterns=[new RegExp('<meta[^>]+(?:property|name)=["]'+name+'["][^>]+content=["]([^"]+)["]','i'),new RegExp('<meta[^>]+content=["]([^"]+)["][^>]+(?:property|name)=["]'+name+'["]','i')];for(const r of patterns){const m=r.exec(html);if(m)return clean(m[1])}return ""}
 function scripts(html:string){const out:any[]=[];const re=/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;for(const m of html.matchAll(re)){try{out.push(JSON.parse(m[1].trim()))}catch{}}return out}
