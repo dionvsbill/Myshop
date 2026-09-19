@@ -94,5 +94,5 @@ create index if not exists product_option_values_option_idx on product_option_va
 create index if not exists product_variants_product_idx on product_variants(product_id);
 create index if not exists product_variants_active_idx on product_variants(is_active);
 create index if not exists product_media_product_idx on product_media(product_id);
-drop constraint if exists cart_items_user_id_product_id_key;
+alter table cart_items drop constraint if exists cart_items_user_id_product_id_key;
 create unique index if not exists cart_items_user_product_variant_uidx on cart_items(user_id,product_id,variant_id);
