@@ -1,0 +1,8 @@
+import LegalPage from "../../../../components/LegalPage";
+export default function DataPolicy(){return <LegalPage title="Data & Account Policy" intro="This page gives practical instructions for managing the personal data associated with your Myshop account." updated="19 September 2026" sections={[
+{title:"What is stored",body:<p>Your account may contain identity, contact, profile, order, cart, wishlist, product-view and security-related records. Payment records contain transaction references and status rather than full card credentials.</p>},
+{title:"How to update your data",body:<p>Open Account and use Edit profile to update supported profile information. Keep delivery details accurate before placing an order. If a field cannot be changed in the interface, contact support.</p>},
+{title:"How to request deletion",body:<p>Use the account deletion control where available or contact support. We will verify the request and explain any records that must be retained for legal, accounting, fraud-prevention or dispute purposes.</p>},
+{title:"Data correction",body:<p>If information is inaccurate, provide the correct value and enough context for us to identify the affected account or order. Do not send passwords, one-time codes or full payment card numbers to support.</p>},
+{title:"Security instructions",body:<p>Use a unique password, do not share verification codes, sign out of shared devices, and report suspicious account activity immediately. Myshop support will never need your password or payment PIN.</p>}
+]}/>}
