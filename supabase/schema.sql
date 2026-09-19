@@ -13,7 +13,9 @@ create policy profiles_access on profiles for select to authenticated using((sel
 create policy profiles_insert on profiles for insert to authenticated with check((select auth.uid())=id);
 create policy profiles_update on profiles for update to authenticated using((select auth.uid())=id or exists(select 1 from profiles p where p.id=(select auth.uid()) and p.role='ADMIN')) with check((select auth.uid())=id or exists(select 1 from profiles p where p.id=(select auth.uid()) and p.role='ADMIN'));
 create policy categories_read on categories for select to anon,authenticated using(true);
-create policy categories_admin_write on categories for insert,update,delete to authenticated using(exists(select 1 from profiles p where p.id=(select auth.uid()) and p.role='ADMIN')) with check(exists(select 1 from profiles p where p.id=(select auth.uid()) and p.role='ADMIN'));
+create policy categories_admin_insert on categories for insert to authenticated with check(exists(select 1 from profiles p where p.id=(select auth.uid()) and p.role='ADMIN'));
+create policy categories_admin_update on categories for update to authenticated using(exists(select 1 from profiles p where p.id=(select auth.uid()) and p.role='ADMIN')) with check(exists(select 1 from profiles p where p.id=(select auth.uid()) and p.role='ADMIN'));
+create policy categories_admin_delete on categories for delete to authenticated using(exists(select 1 from profiles p where p.id=(select auth.uid()) and p.role='ADMIN'));
 create policy products_read on products for select to anon,authenticated using(is_active=true or exists(select 1 from profiles p where p.id=(select auth.uid()) and p.role='ADMIN'));
 create policy products_admin_insert on products for insert to authenticated with check(exists(select 1 from profiles p where p.id=(select auth.uid()) and p.role='ADMIN'));
 create policy products_admin_update on products for update to authenticated using(exists(select 1 from profiles p where p.id=(select auth.uid()) and p.role='ADMIN')) with check(exists(select 1 from profiles p where p.id=(select auth.uid()) and p.role='ADMIN'));
