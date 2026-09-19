@@ -11,7 +11,8 @@ type Media={id:string;url:string;alt_text?:string|null;position:number;is_featur
 type Option={id:string;name:string;position:number;values:{id:string;value:string;swatch_hex?:string|null;position:number}[]};
 type Variant={id:string;title:string;sku?:string|null;price:number;compare_price?:number|null;stock:number;option_values:Record<string,string>;image_url?:string|null;barcode?:string|null;weight_grams?:number|null;is_active:boolean};
 type Order={id:string;order_number?:string;total:number;status:string;payment_reference?:string|null;paid_at?:string|null;user_id?:string;created_at:string;items?:any[]};
-type User={id:string;email?:string;full_name?:string;username?:string;role?:string;phone?:string;created_at:string;is_deactivated?:boolean};\ntype Payment={id:string;reference:string;user_id?:string|null;amount:number;currency:string;status:string;paystack_status?:string|null;order_id?:string|null;metadata?:any;initialized_at:string;verified_at?:string|null;order_created_at?:string|null;last_error?:string|null;created_at:string};
+type User={id:string;email?:string;full_name?:string;username?:string;role?:string;phone?:string;created_at:string;is_deactivated?:boolean};
+type Payment={id:string;reference:string;user_id?:string|null;amount:number;currency:string;status:string;paystack_status?:string|null;order_id?:string|null;metadata?:any;initialized_at:string;verified_at?:string|null;order_created_at?:string|null;last_error?:string|null;created_at:string};
 
 const STATUSES=["PENDING","PROCESSING","CONFIRMED","SHIPPED","DELIVERED","COMPLETED","CANCELLED"];
 const emptyForm=()=>({title:"",slug:"",description:"",price:"",compare_price:"",base_price:"",stock:"0",sku:"",category_id:"",brand:"",tags:"",features:"",seo_title:"",seo_description:"",specifications:"",is_featured:false,is_active:true});
