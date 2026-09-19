@@ -7,7 +7,7 @@ type Product={id:string;title:string;price:number|null;compare_price:number|null
 
 function cleanJumiaUrl(value:string){
  const text=value.replace(/\\n/g," ").replace(/\\r/g," ").trim();
- const m=text.match(/https?:\\/\\/(?:www\\.)?jumia\\.com\\.gh\\/[^\\s<>"']+/i);
+ const m=text.match(/https?:\/\/(?:www\.)?jumia\.com\.gh\/[^\s<>"']+/i);
  return m?m[0].replace(/[.,;)]+$/,""):text;
 }
 function handleUrlChange(value:string){const extracted=cleanJumiaUrl(value);setUrl(extracted)}
