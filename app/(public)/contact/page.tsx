@@ -1,7 +1,7 @@
 "use client";
 
 import {FormEvent,useState} from "react";
-import LegalPage from "../../../../components/LegalPage";
+import LegalPage from "../../../components/LegalPage";
 
 export default function Contact(){
   const [status,setStatus]=useState("");
