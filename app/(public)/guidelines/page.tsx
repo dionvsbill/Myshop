@@ -1,0 +1,9 @@
+import LegalPage from "../../../../components/LegalPage";
+export default function Guidelines(){return <LegalPage title="Community, Listing & Marketplace Guidelines" intro="These guidelines explain how customers, sellers and other participants should behave so Myshop remains useful, safe and trustworthy." updated="19 September 2026" sections={[
+{title:"Accurate listings",body:<p>Product titles, prices, images, descriptions, stock and variants should accurately represent what is offered. Do not use misleading images, fake discounts, false availability or copied information intended to deceive customers.</p>},
+{title:"Respectful conduct",body:<p>Do not harass, threaten, impersonate, discriminate against or repeatedly abuse customers, sellers or support staff. Keep communications focused on resolving legitimate shopping issues.</p>},
+{title:"Prohibited goods and activity",body:<p>Do not list or transact in unlawful goods, stolen property, fraudulent services, counterfeit goods, controlled items or products whose sale is prohibited by applicable law.</p>},
+{title:"Reviews and feedback",body:<p>Feedback should describe genuine experience. Do not submit fabricated reviews, manipulate ratings, pay for deceptive reviews or coordinate activity intended to distort marketplace information.</p>},
+{title:"Fraud prevention",body:<p>Do not create multiple accounts to exploit promotions, manipulate stock, abuse refunds, test stolen payment credentials or bypass security controls. Suspicious activity may result in account restrictions and investigation.</p>},
+{title:"Reporting a problem",body:<p>Contact support with the order number, product information, dates and evidence. For urgent safety or fraud matters, explain clearly what happened and what action you believe is required.</p>}
+]}/>}
