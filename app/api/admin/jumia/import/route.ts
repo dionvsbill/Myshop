@@ -21,20 +21,20 @@ export async function POST(req:NextRequest){
  const s=await createClient();const {data:u}=await s.auth.getUser();if(!u.user)return NextResponse.json({error:"Authentication required"},{status:401});
  const {data:profile}=await s.from("profiles").select("role").eq("id",u.user.id).maybeSingle();if(profile?.role!=="ADMIN")return NextResponse.json({error:"Admin access required"},{status:403});
  const body=await req.json();const url=typeof body?.url==="string"?body.url.trim():"";
- if(!/^https:\/\/www\.jumia\.com\.gh\//i.test(url))return NextResponse.json({error:"Paste a Jumia Ghana product URL."},{status:400});
+ const normalizedUrl=url.replace(/^http:\/\//i,"https://").replace(/^https:\/\/(?!www\.)jumia\.com\.gh\//i,"https://www.jumia.com.gh/");\n if(!/^https:\/\/www\.jumia\.com\.gh\//i.test(normalizedUrl))return NextResponse.json({error:"Paste a Jumia Ghana product URL."},{status:400});
  let html="";let directStatus=200;
  try{const res=await fetch(url,{headers:{"User-Agent":"Mozilla/5.0 (compatible; Myshop/1.0)","Accept":"text/html,application/xhtml+xml"},cache:"no-store"});directStatus=res.status;if(res.ok)html=await res.text()}catch{}
  let p:any=findProduct(scripts(html));let fallback:any=null;
  if(!p||!p.name){
    try{const reader=await fetch("https://r.jina.ai/"+url,{headers:{"Accept":"text/plain","User-Agent":"Myshop Jumia importer"},cache:"no-store"});if(reader.ok)fallback=fromReader(await reader.text(),url)}catch{}
  }
- const title=clean(p?.name||meta(html,"og:title")||fallback?.title||"");
+ const title=clean(p?.name||meta(html,"og:title")||meta(html,"twitter:title")||fallback?.title||"");
  if(!title){
    const message=directStatus===403?"Jumia blocked the direct server request. The importer retried through a page reader but could not extract this product. Try opening the product in Jumia and paste the full share link again.":"Could not read product details from this Jumia page.";
    return NextResponse.json({error:message},{status:422});
  }
- const canonical=clean(p?.url||meta(html,"og:url")||fallback?.url||url.split("?")[0]);const id=productId(canonical);
- const rawImages=arr(p?.image).concat([meta(html,"og:image")]).concat(fallback?.images||[]).filter(Boolean).map((x:any)=>String(x).trim()).filter((x,i,a)=>a.indexOf(x)===i);
+ const canonical=clean(p?.url||meta(html,"og:url")||fallback?.url||normalizedUrl.split("?")[0]);const id=productId(canonical);
+ const rawImages=arr(p?.image).concat([meta(html,"og:image"),meta(html,"twitter:image")]).concat(fallback?.images||[]).filter(Boolean).map((x:any)=>String(x).trim()).filter((x,i,a)=>a.indexOf(x)===i);
  const offers=Array.isArray(p?.offers)?p.offers[0]:p?.offers;const rating=p?.aggregateRating;
  const features=arr(p?.additionalProperty).map((x:any)=>({name:x?.name||"",value:x?.value||""})).filter((x:any)=>x.name||x.value);const specifications:Record<string,string>={};for(const x of features)if(x.name)specifications[x.name]=String(x.value);
  const payload={jumia_product_id:id,source_url:canonical,title,slug:slugify(title)+"-"+(id||Date.now()),description:clean(p?.description||meta(html,"description")||fallback?.description||""),brand:typeof p?.brand==="object"?p.brand?.name:p?.brand||null,sku:p?.sku||null,price:num(offers?.price)??fallback?.price??null,compare_price:null,currency:offers?.priceCurrency||"GHS",discount_percent:null,rating:num(rating?.ratingValue)??fallback?.rating??null,review_count:Number(rating?.reviewCount||rating?.ratingCount||fallback?.reviewCount||0)||0,stock_status:offers?.availability||null,images:rawImages,features,specifications,seller:typeof offers?.seller==="object"?offers.seller?.name:offers?.seller||null,category:typeof p?.category==="string"?p.category:null,jforce_url:"https://jforce.jumia.com.gh/s/iHaN1Ck",is_active:true,last_synced_at:new Date().toISOString()};
