@@ -6,11 +6,11 @@ function meta(html:string,name:string){const patterns=[new RegExp('<meta[^>]+(?:
 function scripts(html:string){const out:any[]=[];const start="<script";const end="</script>";let pos=0;while((pos=html.indexOf(start,pos))!==-1){const openEnd=html.indexOf(">",pos);if(openEnd===-1)break;const tag=html.slice(pos,openEnd+1).toLowerCase();if(tag.includes("application/ld+json")){const close=html.indexOf(end,openEnd+1);if(close===-1)break;const raw=html.slice(openEnd+1,close).trim();try{out.push(JSON.parse(raw))}catch{}pos=close+end.length}else pos=openEnd+1}return out}
 function findProduct(v:any):any{if(!v)return null;if(Array.isArray(v)){for(const x of v){const p=findProduct(x);if(p)return p}return null}if(typeof v!=="object")return null;if(v["@type"]==="Product"||(Array.isArray(v["@type"])&&v["@type"].includes("Product")))return v;for(const x of Object.values(v)){const p=findProduct(x);if(p)return p}return null}
 function arr(v:any){return Array.isArray(v)?v:[v].filter(Boolean)}
-function num(v:any){const n=Number(String(v??"").replace(/[^0-9.]/g,""));return Number.isFinite(n)?n:null}
+function num(v:any){if(v===null||v===undefined||String(v).trim()==="")return null;const n=Number(String(v).replace(/[^0-9.]/g,""));return Number.isFinite(n)?n:null}
 function slugify(s:string){return s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"").slice(0,90)||"jumia-product"}
 function productId(url:string){return (url.match(/-(\d+)\.html(?:$|\?)/i)||[])[1]||null}
 function titleFromUrl(url:string){const m=url.match(/jumia\.com\.gh\/([^/?#]+?)-(\d+)\.html/i);if(!m)return "";return m[1].replace(/[-_]+/g," ").replace(/\b\w/g,x=>x.toUpperCase()).trim()}
-function searchReader(markdown:string,url:string){const links:string[]=[];const lr=/https?:\/\/(?:www\.)?jumia\.com\.gh\/[^\s)<>"']+/gi;let lm:RegExpExecArray|null;while((lm=lr.exec(markdown))!==null){if(lm[0].includes(productId(url)||"__none__"))links.push(lm[0])}const images:string[]=[];const ir=/!\[[^\]]*\]\((https?:\/\/[^\s)]+)\)/g;let im:RegExpExecArray|null;while((im=ir.exec(markdown))!==null){if(/jumia|gh\.jumia/i.test(im[1])&&images.indexOf(im[1])===-1)images.push(im[1])}const price=(markdown.match(/(?:GH₵|GHS|GH\\s*₵)\s*([0-9][0-9,]*(?:\.\d{1,2})?)/i)||[])[1];const heading=(markdown.match(/^#\s+(.+)$/m)||[])[1]||"";return {title:clean(heading),images,price:num(price),url:links[0]||url};}
+function searchReader(markdown:string,url:string){const id=productId(url);const links:string[]=[];const lr=/https?:\/\/(?:www\.)?jumia\.com\.gh\/[^\s)<>"']+/gi;let lm:RegExpExecArray|null;while((lm=lr.exec(markdown))!==null){if(!id||lm[0].includes(id))links.push(lm[0])}const images:string[]=[];const ir=/!\[[^\]]*\]\((https?:\/\/[^\s)]+)\)/g;let im:RegExpExecArray|null;while((im=ir.exec(markdown))!==null){if(/jumia|gh\.jumia/i.test(im[1])&&images.indexOf(im[1])===-1)images.push(im[1])}const price=(markdown.match(/(?:GH₵|GHS|GH\\s*₵)\s*([0-9][0-9,]*(?:\.\d{1,2})?)/i)||[])[1];const heading=(markdown.match(/^#\s+(.+)$/m)||[])[1]||"";return {title:clean(heading),images,price:num(price),url:links[0]||url};}
 function fromReader(markdown:string,url:string){
  const title=(markdown.match(/^#\s+(.+)$/m)||[])[1]?.trim()||"";
  const images:string[]=[];const re=/!\[[^\]]*\]\((https?:\/\/[^\s)]+)\)/g;let im:RegExpExecArray|null;while((im=re.exec(markdown))!==null){if(images.indexOf(im[1])===-1)images.push(im[1])}
@@ -31,6 +31,13 @@ export async function POST(req:NextRequest){
  if(!p||!p.name){
    const readerUrls=["https://r.jina.ai/"+normalizedUrl,"https://r.jina.ai/http://www.jumia.com.gh/"+normalizedUrl.split("/").slice(3).join("/")];
    for(const readerUrl of readerUrls){try{const reader=await fetch(readerUrl,{headers:{"Accept":"text/plain","User-Agent":"Myshop Jumia importer"},cache:"no-store"});if(reader.ok){const text=await reader.text();const candidate=fromReader(text,normalizedUrl);if(candidate.title||candidate.images.length||candidate.price!=null){fallback=candidate;break}}}catch{}}
+ }
+ if(!p||!p.name){
+   try{const catalogUrls=[
+     "https://r.jina.ai/https://www.jumia.com.gh/mens-jewelry/arhanory/",
+     "https://r.jina.ai/https://www.jumia.com.gh/mlp-adjustable-ring/"
+   ];for(const catalogUrl of catalogUrls){const reader=await fetch(catalogUrl,{headers:{"Accept":"text/plain","User-Agent":"Myshop Jumia importer"},cache:"no-store"});if(reader.ok){const text=await reader.text();const candidate=searchReader(text,normalizedUrl);const wanted=titleFromUrl(normalizedUrl).toLowerCase().replace(/-/g," ");const hasProduct=text.toLowerCase().includes((sourceId||"__none__"))||text.toLowerCase().includes(wanted.slice(0,30));if(hasProduct&&(candidate.images.length||candidate.price!=null)){fallback={...(fallback||{}),...candidate};break}}}
+   }catch{}
  }
  if(!p||!p.name){
    try{const q=encodeURIComponent((sourceId||"")+" Jumia Ghana "+titleFromUrl(normalizedUrl));const searchUrl="https://r.jina.ai/https://www.google.com/search?q="+q;const reader=await fetch(searchUrl,{headers:{"Accept":"text/plain","User-Agent":"Myshop Jumia importer"},cache:"no-store"});if(reader.ok){const text=await reader.text();const candidate=searchReader(text,normalizedUrl);if(candidate.title||candidate.images.length||candidate.price!=null)fallback={...(fallback||{}),...candidate}}
