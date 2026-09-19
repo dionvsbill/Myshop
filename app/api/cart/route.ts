@@ -21,7 +21,6 @@ export async function POST(req:Request){
   }
   if(available<quantity)return NextResponse.json({error:"Insufficient stock"},{status:400});
 
-  const {data:existing}=await s.from("cart_items").select("id,quantity").eq("user_id",u.user.id).eq("product_id",product_id).is("variant_id",variant_id===null?null:undefined).maybeSingle();
   if(variant_id===null){
     const {data:e}=await s.from("cart_items").select("id,quantity").eq("user_id",u.user.id).eq("product_id",product_id).is("variant_id",null).maybeSingle();
     if(e){const {error}=await s.from("cart_items").update({quantity:Math.min(available,e.quantity+quantity)}).eq("id",e.id);if(error)return NextResponse.json({error:error.message},{status:400});}
