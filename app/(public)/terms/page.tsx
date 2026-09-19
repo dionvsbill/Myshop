@@ -1,4 +1,4 @@
-import LegalPage from "../../../../components/LegalPage";
+import LegalPage from "../../../components/LegalPage";
 export default function Terms(){return <LegalPage title="Terms of Service" intro="These terms explain the rules for using Myshop, creating an account, purchasing products, communicating with support and using marketplace features." updated="19 September 2026" sections={[
 {title:"1. Accepting the terms",body:<p>By accessing Myshop or creating an account, you agree to use the service lawfully and responsibly. If you do not agree, do not use the service.</p>},
 {title:"2. Accounts",body:<p>You are responsible for providing accurate information, keeping your credentials secure and notifying us if you believe your account has been compromised. One person must not impersonate another person or create accounts for fraudulent purposes.</p>},
