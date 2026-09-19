@@ -1,4 +1,4 @@
-export type RecommendationProduct={id:string;title:string;price:number;compare_price?:number|null;rating?:number|null;review_count?:number|null;stock?:number|null;category_id?:string|null;brand?:string|null;tags?:string[]|null;created_at?:string};
+export type RecommendationProduct={id:string;slug:string;title:string;price:number;compare_price?:number|null;images?:string[];rating?:number|null;review_count?:number|null;stock?:number|null;category_id?:string|null;brand?:string|null;tags?:string[]|null;created_at?:string};
 
 type Behavior={views?:string[];searches?:string[]};
 
