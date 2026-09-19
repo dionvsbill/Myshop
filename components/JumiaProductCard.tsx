@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {Star,ExternalLink} from "lucide-react";
 import styles from "./productCard.module.css";
 
