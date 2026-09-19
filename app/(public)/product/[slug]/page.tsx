@@ -1,34 +1,51 @@
 "use client";
+
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Maximize2, PackageOpen, Play, Sparkles, Star, ZoomIn } from "lucide-react";
+import { PackageOpen, Star } from "lucide-react";
 import ProductOptions from "../../../../components/ProductOptions";
 import { createClient } from "../../../../lib/supabase/client";
 import RecommendationTracker from "../../../../components/RecommendationTracker";
-type MotionMode = "classic" | "cinematic" | "dynamic" | "kenburns";
-function ProductGallery({media,fallback,title}:{media:any[];fallback?:string;title:string}) {
- const items=media.length?media:fallback?[{id:"fallback",url:fallback,alt_text:title}]:[];
- const [active,setActive]=useState(0),[mode,setMode]=useState<MotionMode>("cinematic"),[zoom,setZoom]=useState(false),[direction,setDirection]=useState(1);
- useEffect(()=>setActive(v=>Math.min(v,Math.max(items.length-1,0))),[items.length]);
- const next=()=>{if(items.length){setDirection(1);setActive(v=>(v+1)%items.length)}}; const prev=()=>{if(items.length){setDirection(-1);setActive(v=>(v-1+items.length)%items.length)}};
- useEffect(()=>{if(mode!=="dynamic"||items.length<2)return;const id=window.setInterval(next,4200);return()=>window.clearInterval(id)},[mode,items.length]);
- const animationClass=mode==="classic"?"gallery-static":mode==="dynamic"?"gallery-dynamic":mode==="kenburns"?"gallery-kenburns":"gallery-cinematic";
- if(!items.length)return <div className="flex min-h-[390px] items-center justify-center rounded-[28px] bg-zinc-100"><PackageOpen className="h-20 w-20 text-zinc-300"/></div>;
- return <div className="space-y-4">
-  <div className="relative overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-[0_20px_60px_rgba(0,0,0,.08)]">
-   <div className="absolute left-4 top-4 z-20 flex items-center gap-2 rounded-full border border-white/70 bg-white/85 px-3 py-2 text-xs font-bold shadow-sm backdrop-blur"><Sparkles size={14}/>{mode==="classic"?"Classic":mode==="cinematic"?"Cinematic":mode==="dynamic"?"Auto motion":"Ken Burns"}</div>
-   <div className="absolute right-4 top-4 z-20 flex gap-2"><button aria-label="Zoom image" onClick={()=>setZoom(true)} className="rounded-full bg-white/90 p-3 shadow-sm backdrop-blur hover:scale-105"><ZoomIn size={17}/></button><button aria-label="Fullscreen image" onClick={()=>document.documentElement.requestFullscreen?.()} className="rounded-full bg-white/90 p-3 shadow-sm backdrop-blur hover:scale-105"><Maximize2 size={17}/></button></div>
-   <div className="group relative flex min-h-[390px] items-center justify-center overflow-hidden bg-zinc-50 p-5"><img key={items[active].id} src={items[active].url} alt={items[active].alt_text||title} className={`max-h-[390px] w-full object-contain ${animationClass} ${direction>0?"gallery-forward":"gallery-backward"}`}/>{items.length>1&&<><button aria-label="Previous image" onClick={prev} className="absolute left-4 rounded-full bg-white/90 p-3 opacity-0 shadow-md transition group-hover:opacity-100"><ChevronLeft/></button><button aria-label="Next image" onClick={next} className="absolute right-4 rounded-full bg-white/90 p-3 opacity-0 shadow-md transition group-hover:opacity-100"><ChevronRight/></button></>}</div>
-  </div>
-  {items.length>1&&<div className="grid grid-cols-5 gap-2 sm:grid-cols-6">{items.map((m,i)=><button key={m.id} onClick={()=>{setDirection(i>=active?1:-1);setActive(i)}} className={`overflow-hidden rounded-xl border-2 bg-white transition ${i===active?"border-zinc-950 ring-2 ring-zinc-950/10":"border-zinc-200 hover:border-zinc-400"}`}><img src={m.url} alt={m.alt_text||`${title} view ${i+1}`} className="h-16 w-full object-cover"/></button>)}</div>}
-  <div className="rounded-2xl border border-zinc-200 bg-white p-3"><div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-500"><Play size={13}/>Viewing animation</div><div className="grid grid-cols-4 gap-2">{(["classic","cinematic","dynamic","kenburns"] as MotionMode[]).map(x=><button key={x} onClick={()=>setMode(x)} className={`rounded-lg px-2 py-2 text-xs font-bold capitalize transition ${mode===x?"bg-zinc-950 text-white":"bg-zinc-100 hover:bg-zinc-200"}`}>{x}</button>)}</div></div>
-  {zoom&&<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4" onClick={()=>setZoom(false)}><img src={items[active].url} alt={title} className="max-h-[92vh] max-w-[92vw] object-contain"/></div>}
- </div>;
-}
-export default function Product({params}:{params:{slug:string}}){
- const [p,setP]=useState<any>(null),[loading,setLoading]=useState(true);
- useEffect(()=>{const load=async()=>{const s=createClient();const {data}=await s.from("products").select("*,categories(name),product_options(id,name,position,product_option_values(id,value,swatch_hex,position)),product_variants(id,price,stock,option_values,image_url,is_active),product_media(id,url,alt_text,position,is_featured)").eq("slug",params.slug).eq("is_active",true).single();setP(data);setLoading(false)};load()},[params.slug]);
- if(loading)return <section className="grid gap-10 md:grid-cols-2"><div className="h-[560px] animate-pulse rounded-[28px] bg-zinc-200"/><div className="space-y-4"><div className="h-8 w-2/3 animate-pulse rounded bg-zinc-200"/><div className="h-24 animate-pulse rounded bg-zinc-200"/></div></section>;
- if(!p)return <section className="py-20 text-center"><PackageOpen className="mx-auto h-16 w-16 text-zinc-300"/><h1 className="mt-4 text-2xl font-bold">Product not found</h1></section>;
- const media=(p.product_media||[]).sort((a:any,b:any)=>a.position-b.position),options=(p.product_options||[]).sort((a:any,b:any)=>a.position-b.position).map((o:any)=>({...o,values:(o.product_option_values||[]).sort((a:any,b:any)=>a.position-b.position)})),variants=(p.product_variants||[]).filter((v:any)=>v.is_active);
- return <section><RecommendationTracker productId={p.id}/><div className="grid gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(380px,.95fr)]"><ProductGallery media={media} fallback={p.images?.[0]} title={p.title}/><div><p className="eyebrow">{p.categories?.name}{p.brand?" · "+p.brand:""}</p><h1 className="page-title mt-2">{p.title}</h1><div className="mt-3 flex items-center gap-1 text-sm"><Star className="fill-current" size={17}/>{Number(p.rating||0).toFixed(1)} ({p.review_count||0})</div><p className="mt-5 text-3xl font-black">GHS {Number(p.price).toFixed(2)}</p>{p.compare_price&&<p className="text-sm text-zinc-500 line-through">GHS {Number(p.compare_price).toFixed(2)}</p>}<p className="mt-6 whitespace-pre-wrap leading-7 text-zinc-600">{p.description}</p>{p.features?.length>0&&<div className="mt-6"><h2 className="font-bold">Highlights</h2><ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-zinc-600">{p.features.map((x:string)=><li key={x}>{x}</li>)}</ul></div>}<ProductOptions productId={p.id} options={options} variants={variants} fallbackPrice={Number(p.price)} fallbackStock={p.stock}/>{p.specifications&&<div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-5"><h2 className="font-bold">Specifications</h2><dl className="mt-3 space-y-2 text-sm">{Object.entries(p.specifications).map(([k,v])=><div key={k} className="flex justify-between gap-4 border-b py-2 last:border-0"><dt className="text-zinc-500">{k}</dt><dd className="text-right font-medium">{String(v)}</dd></div>)}</dl></div>}</div></div></section>
+import { LiquidMorphGallery } from "../../../../components/LiquidMorphGallery";
+
+export default function Product({ params }: { params: { slug: string } }) {
+  const [p, setP] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      const s = createClient();
+      const { data } = await s.from("products").select("*,categories(name),product_options(id,name,position,product_option_values(id,value,swatch_hex,position)),product_variants(id,price,stock,option_values,image_url,is_active),product_media(id,url,alt_text,position,is_featured)").eq("slug", params.slug).eq("is_active", true).single();
+      setP(data);
+      setLoading(false);
+    };
+    load();
+  }, [params.slug]);
+
+  if (loading) return <section className="grid gap-10 md:grid-cols-2"><div className="h-[560px] animate-pulse rounded-[28px] bg-zinc-200" /><div className="space-y-4"><div className="h-8 w-2/3 animate-pulse rounded bg-zinc-200" /><div className="h-24 animate-pulse rounded bg-zinc-200" /></div></section>;
+  if (!p) return <section className="py-20 text-center"><PackageOpen className="mx-auto h-16 w-16 text-zinc-300" /><h1 className="mt-4 text-2xl font-bold">Product not found</h1></section>;
+
+  const media = (p.product_media || []).sort((a: any, b: any) => a.position - b.position);
+  const images = media.length ? media.map((m: any) => m.url).filter(Boolean) : (p.images || []).filter(Boolean);
+  const options = (p.product_options || []).sort((a: any, b: any) => a.position - b.position).map((o: any) => ({ ...o, values: (o.product_option_values || []).sort((a: any, b: any) => a.position - b.position) }));
+  const variants = (p.product_variants || []).filter((v: any) => v.is_active);
+
+  return (
+    <section>
+      <RecommendationTracker productId={p.id} />
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(380px,.95fr)]">
+        <LiquidMorphGallery images={images} title={p.title} />
+        <div>
+          <p className="eyebrow">{p.categories?.name}{p.brand ? " · " + p.brand : ""}</p>
+          <h1 className="page-title mt-2">{p.title}</h1>
+          <div className="mt-3 flex items-center gap-1 text-sm"><Star className="fill-current" size={17} />{Number(p.rating || 0).toFixed(1)} ({p.review_count || 0})</div>
+          <p className="mt-5 text-3xl font-black">GHS {Number(p.price).toFixed(2)}</p>
+          {p.compare_price && <p className="text-sm text-zinc-500 line-through">GHS {Number(p.compare_price).toFixed(2)}</p>}
+          <p className="mt-6 whitespace-pre-wrap leading-7 text-zinc-600">{p.description}</p>
+          {p.features?.length > 0 && <div className="mt-6"><h2 className="font-bold">Highlights</h2><ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-zinc-600">{p.features.map((x: string) => <li key={x}>{x}</li>)}</ul></div>}
+          <ProductOptions productId={p.id} options={options} variants={variants} fallbackPrice={Number(p.price)} fallbackStock={p.stock} />
+          {p.specifications && <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-5"><h2 className="font-bold">Specifications</h2><dl className="mt-3 space-y-2 text-sm">{Object.entries(p.specifications).map(([k, v]) => <div key={k} className="flex justify-between gap-4 border-b py-2 last:border-0"><dt className="text-zinc-500">{k}</dt><dd className="text-right font-medium">{String(v)}</dd></div>)}</dl></div>}
+        </div>
+      </div>
+    </section>
+  );
 }
