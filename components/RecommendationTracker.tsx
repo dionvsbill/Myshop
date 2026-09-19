@@ -1,0 +1,4 @@
+"use client";
+import { useEffect } from "react";
+import { createClient } from "../lib/supabase/client";
+export default function RecommendationTracker({productId,query}:{productId?:string;query?:string}){useEffect(()=>{const key="myshop_behavior";const old=JSON.parse(localStorage.getItem(key)||'{"views":[],"searches":[]}');if(productId)old.views=[productId,...old.views.filter((x:string)=>x!==productId)].slice(0,30);if(query?.trim())old.searches=[query.trim(),...old.searches.filter((x:string)=>x!==query.trim())].slice(0,30);localStorage.setItem(key,JSON.stringify(old));const s=createClient();s.auth.getUser().then(({data})=>{if(data.user){void s.from("profiles").update({}).eq("id",data.user.id)}})},[productId,query]);return null}
