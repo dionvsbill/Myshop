@@ -1,14 +1,4 @@
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
-
-export default function PublicLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      <Header />
-      <main className="min-h-[60vh]">
-        <div className="container py-8">{children}</div>
-      </main>
-      <Footer />
-    </>
-  );
-}
+import MobileBottomNav from "../../components/MobileBottomNav";
+export default function PublicLayout({children}:{children:React.ReactNode}){return <><Header/><main className="min-h-[60vh]"><div className="container py-5 pb-24">{children}</div></main><Footer/><MobileBottomNav/></>}
