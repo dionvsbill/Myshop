@@ -1,7 +1,7 @@
 import {FolderTree,ChevronRight,Layers3} from "lucide-react";
 import Link from "next/link";
 import {createClient} from "../../../../lib/supabase/server";
-import styles from "../../../../admin/admin.module.css";
+import styles from "../../../admin/admin.module.css";
 
 export default async function Categories(){
  const s=await createClient();
