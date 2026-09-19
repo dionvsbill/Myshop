@@ -1,4 +1,4 @@
-import LegalPage from "../../../../components/LegalPage";
+import LegalPage from "../../../components/LegalPage";
 export default function ShippingReturns(){return <LegalPage title="Shipping, Delivery, Returns & Refunds" intro="This page explains the customer process from checkout through delivery, and what to do when an order is delayed, incorrect, damaged or eligible for return." updated="19 September 2026" sections={[
 {title:"Before ordering",body:<p>Confirm your name, phone number, location and delivery details. Check the product title, variant, quantity, price and available stock before payment.</p>},
 {title:"Order confirmation",body:<p>After successful payment verification, Myshop creates the order and records an initial tracking event. Your order number is available from the account order area.</p>},
