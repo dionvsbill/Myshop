@@ -1,4 +1,4 @@
-import LegalPage from "../../../../components/LegalPage";
+import LegalPage from "../../../components/LegalPage";
 export default function Cookies(){return <LegalPage title="Cookie Policy" intro="Cookies and similar browser storage help Myshop keep sessions working, remember essential preferences and understand how the site is used." updated="19 September 2026" sections={[
 {title:"1. Essential storage",body:<p>Authentication and security mechanisms may use cookies or browser storage so that a signed-in session can work correctly and protected pages can identify the current user.</p>},
 {title:"2. Shopping functionality",body:<p>Cart, navigation and interface features may rely on browser storage or server-side records. Account-linked cart and wishlist data is stored in Myshop's database when you are signed in.</p>},
