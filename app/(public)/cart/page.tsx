@@ -17,9 +17,11 @@ if(searchParams.payment==="success"&&searchParams.reference){
         const expectedAmount=Math.round((items||[]).reduce((n:any,i:any)=>n+Number(i.product_variants?.price??i.products?.price??0)*Number(i.quantity||0),0)*100);
         const paymentUserId=paystack?.data?.metadata?.user_id;
         if(verifiedCurrency==="GHS"&&verifiedAmount===expectedAmount&&paymentUserId===user.user.id){
+          const admin=createAdminClient(supabaseUrl,serviceKey);
+          await admin.from("payment_transactions").update({status:"PAYMENT_VERIFIED",paystack_status:"success",verified_at:new Date().toISOString()}).eq("reference",searchParams.reference).eq("user_id",user.user.id);
+
           const rawShipping=paystack?.data?.metadata?.shipping;
           const shipping=typeof rawShipping==="string"?(()=>{try{return JSON.parse(rawShipping)}catch{return {}}})():rawShipping||{};
-          const admin=createAdminClient(supabaseUrl,serviceKey);
           const result=await admin.rpc("place_order_for_payment",{p_user_id:user.user.id,shipping_address:shipping,p_payment_reference:searchParams.reference});
           if(!result.error&&result.data) paymentOrder=String(result.data);
           else paymentError="Payment was confirmed, but order creation failed: "+(result.error?.message||"Unknown database error")+". Your payment reference has been preserved; please contact support.";
