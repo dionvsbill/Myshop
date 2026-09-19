@@ -17,7 +17,7 @@ export default function ProductCard({product}:{product:ProductCardItem}){
  };
  return <article className={styles.card}>
   <Link href={"/product/"+p.slug} className={styles.imageLink}>
-   <div className={styles.imageWrap}><img src={p.images?.[0]||""} alt={p.title} loading="lazy"/>{discount>0&&<span className={styles.badge}>-{discount}%</span>}</div>
+   <div className={styles.imageWrap}><img src={p.images?.[0]||""} alt={p.title} loading="lazy"/>{p.images?.[1]&&<img src={p.images[1]} alt="" loading="lazy" className={styles.altImage}/>}{discount>0&&<span className={styles.badge}>-{discount}%</span>}</div>
   </Link>
   <div className={styles.content}>
    <Link href={"/product/"+p.slug} className={styles.title}>{p.title}</Link>
