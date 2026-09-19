@@ -3,7 +3,7 @@ create extension if not exists pgcrypto;
 create table if not exists profiles(id uuid primary key references auth.users(id) on delete cascade,email text unique,full_name text,avatar_url text,role text not null default 'CUSTOMER' check(role in ('CUSTOMER','ADMIN')),phone text,created_at timestamptz not null default now());
 create table if not exists categories(id uuid primary key default gen_random_uuid(),name text unique not null,slug text unique not null,image_url text,created_at timestamptz not null default now());
 create table if not exists products(id uuid primary key default gen_random_uuid(),title text not null,slug text unique not null,description text not null,price numeric(12,2) not null check(price>=0),compare_price numeric(12,2),stock integer not null default 0 check(stock>=0),sku text unique,category_id uuid references categories(id) on delete set null,images text[] not null default '{}',rating numeric(3,2) not null default 0,review_count integer not null default 0,is_featured boolean not null default false,is_active boolean not null default true,created_at timestamptz not null default now());
-create table if not exists orders(id uuid primary key default gen_random_uuid(),user_id uuid not null references profiles(id) on delete restrict,order_number text unique not null,total numeric(12,2) not null check(total>=0),status text not null default 'PENDING' check(status in ('PENDING','PAID','SHIPPED','DELIVERED','CANCELLED')),items jsonb not null,shipping_address jsonb,created_at timestamptz not null default now());
+create table if not exists orders(id uuid primary key default gen_random_uuid(),user_id uuid not null references profiles(id) on delete restrict,order_number text unique not null,total numeric(12,2) not null check(total>=0),status text not null default 'PENDING' check(status in ('PENDING','PAID','PROCESSING','CONFIRMED','SHIPPED','DELIVERED','COMPLETED','CANCELLED')),items jsonb not null,shipping_address jsonb,created_at timestamptz not null default now());
 create table if not exists reviews(id uuid primary key default gen_random_uuid(),product_id uuid not null references products(id) on delete cascade,user_id uuid not null references profiles(id) on delete cascade,rating int not null check(rating between 1 and 5),comment text,created_at timestamptz not null default now());
 create table if not exists cart_items(id uuid primary key default gen_random_uuid(),user_id uuid not null references profiles(id) on delete cascade,product_id uuid not null references products(id) on delete cascade,quantity int not null default 1 check(quantity>0),created_at timestamptz not null default now(),unique(user_id,product_id));
 
@@ -33,23 +33,28 @@ create index if not exists products_category_idx on products(category_id); creat
 create or replace function public.handle_new_user() returns trigger language plpgsql security invoker set search_path=public as $$ begin insert into public.profiles(id,email,full_name) values(new.id,new.email,coalesce(new.raw_user_meta_data->>'full_name','')) on conflict(id) do nothing; return new; end; $$;
 drop trigger if exists on_auth_user_created on auth.users; create trigger on_auth_user_created after insert on auth.users for each row execute function public.handle_new_user();
 
-create or replace function public.place_order(shipping_address jsonb) returns uuid language plpgsql security invoker set search_path=public as $$
+create or replace function public.place_order(shipping_address jsonb, p_payment_reference text default null) returns uuid language plpgsql security definer set search_path=public as $
 declare uid uuid := (select auth.uid()); oid uuid; onum text; total numeric(12,2); payload jsonb;
 begin
  if uid is null then raise exception 'Authentication required'; end if;
+ if p_payment_reference is not null and exists(select 1 from orders where payment_reference=p_payment_reference) then
+   select id into oid from orders where payment_reference=p_payment_reference limit 1;
+   return oid;
+ end if;
  if not exists(select 1 from cart_items where user_id=uid) then raise exception 'Cart is empty'; end if;
  if exists(select 1 from cart_items c join products p on p.id=c.product_id left join product_variants v on v.id=c.variant_id where c.user_id=uid and (not p.is_active or c.quantity>coalesce(v.stock,p.stock) or (c.variant_id is not null and (v.id is null or not v.is_active or v.product_id<>p.id)))) then raise exception 'One or more products are unavailable'; end if;
  select coalesce(sum(c.quantity*coalesce(v.price,p.price)),0) into total from cart_items c join products p on p.id=c.product_id left join product_variants v on v.id=c.variant_id where c.user_id=uid and p.is_active=true;
  if total<=0 then raise exception 'Cart is empty'; end if;
  select jsonb_agg(jsonb_build_object('product_id',p.id,'variant_id',c.variant_id,'title',p.title,'variant_title',v.title,'price',coalesce(v.price,p.price),'quantity',c.quantity,'image',coalesce(v.image_url,p.images[1]),'options',coalesce(v.option_values,'{}'::jsonb))) into payload from cart_items c join products p on p.id=c.product_id left join product_variants v on v.id=c.variant_id where c.user_id=uid;
  onum:='ORD-'||upper(substr(replace(gen_random_uuid()::text,'-',''),1,12));
- insert into orders(user_id,order_number,total,status,items,shipping_address,currency) values(uid,onum,total,'PAID',payload,shipping_address,'GHS') returning id into oid;
+ insert into orders(user_id,order_number,total,status,items,shipping_address,currency,payment_reference,paid_at) values(uid,onum,total,'PROCESSING',payload,shipping_address,'GHS',p_payment_reference,now()) returning id into oid;
+ insert into order_tracking_events(order_id,status,title,description) values(oid,'PROCESSING','Order confirmed','Payment received and your order is being prepared.');
  update product_variants v set stock=v.stock-c.quantity from cart_items c where c.variant_id=v.id and c.user_id=uid;
  update products p set stock=p.stock-c.quantity from cart_items c where c.product_id=p.id and c.user_id=uid and c.variant_id is null;
  delete from cart_items where user_id=uid;
  return oid;
 end; $$;
-grant execute on function public.place_order(jsonb) to authenticated;
+grant execute on function public.place_order(jsonb,text) to authenticated;
 
 insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types) values('product-images','product-images',true,5242880,array['image/jpeg','image/png','image/webp']) on conflict(id) do update set public=true,file_size_limit=5242880,allowed_mime_types=excluded.allowed_mime_types;
 insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types) values('avatars','avatars',true,5242880,array['image/jpeg','image/png','image/webp']) on conflict(id) do update set public=true,file_size_limit=5242880,allowed_mime_types=excluded.allowed_mime_types;
@@ -66,6 +71,9 @@ create table if not exists product_variants(id uuid primary key default gen_rand
 create table if not exists product_media(id uuid primary key default gen_random_uuid(),product_id uuid not null references products(id) on delete cascade,url text not null,alt_text text,media_type text not null default 'image' check(media_type in ('image','video')),position integer not null default 0,is_featured boolean not null default false,created_at timestamptz not null default now());
 alter table cart_items add column if not exists variant_id uuid references product_variants(id) on delete cascade;
 alter table orders add column if not exists currency text not null default 'GHS';
+alter table orders add column if not exists payment_reference text;
+alter table orders add column if not exists paid_at timestamptz;
+create unique index if not exists orders_payment_reference_uidx on orders(payment_reference) where payment_reference is not null;
 alter table products add column if not exists brand text;
 alter table products add column if not exists tags text[] not null default '{}';
 alter table products add column if not exists features text[] not null default '{}';
