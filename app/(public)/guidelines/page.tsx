@@ -1,4 +1,4 @@
-import LegalPage from "../../../../components/LegalPage";
+import LegalPage from "../../../components/LegalPage";
 export default function Guidelines(){return <LegalPage title="Community, Listing & Marketplace Guidelines" intro="These guidelines explain how customers, sellers and other participants should behave so Myshop remains useful, safe and trustworthy." updated="19 September 2026" sections={[
 {title:"Accurate listings",body:<p>Product titles, prices, images, descriptions, stock and variants should accurately represent what is offered. Do not use misleading images, fake discounts, false availability or copied information intended to deceive customers.</p>},
 {title:"Respectful conduct",body:<p>Do not harass, threaten, impersonate, discriminate against or repeatedly abuse customers, sellers or support staff. Keep communications focused on resolving legitimate shopping issues.</p>},
