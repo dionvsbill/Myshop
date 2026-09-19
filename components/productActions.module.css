@@ -1,0 +1,1 @@
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:18px}.button{height:46px;border:0;border-radius:7px;background:#111;color:#fff;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;gap:8px}.wish{background:#fff;color:#111;border:1px solid #ddd}.button:active{transform:scale(.98)}
