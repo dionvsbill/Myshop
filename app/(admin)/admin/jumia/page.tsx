@@ -10,8 +10,8 @@ function cleanJumiaUrl(value:string){
  const m=text.match(/https?:\/\/(?:www\.)?jumia\.com\.gh\/[^\s<>"']+/i);
  return m?m[0].replace(/[.,;)]+$/,""):text;
 }
-function handleUrlChange(value:string){const extracted=cleanJumiaUrl(value);setUrl(extracted)}
-function handlePaste(e:React.ClipboardEvent<HTMLInputElement>){const pasted=e.clipboardData.getData("text");const extracted=cleanJumiaUrl(pasted);if(extracted!==pasted.trim()){e.preventDefault();setUrl(extracted)}}
+
+
 
 export default function JumiaAdmin(){
  const[url,setUrl]=useState(""),[busy,setBusy]=useState(false),[msg,setMsg]=useState(""),[ok,setOk]=useState(false),[items,setItems]=useState<Product[]>([]),[search,setSearch]=useState("");
