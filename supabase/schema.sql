@@ -54,3 +54,45 @@ create policy product_images_read on storage.objects for select to anon,authenti
 create policy product_images_admin on storage.objects for all to authenticated using(bucket_id='product-images' and exists(select 1 from public.profiles p where p.id=(select auth.uid()) and p.role='ADMIN')) with check(bucket_id='product-images' and exists(select 1 from public.profiles p where p.id=(select auth.uid()) and p.role='ADMIN'));
 create policy avatars_read on storage.objects for select to anon,authenticated using(bucket_id='avatars');
 create policy avatars_own_write on storage.objects for all to authenticated using(bucket_id='avatars' and (storage.foldername(name))[1]=(select auth.uid())::text) with check(bucket_id='avatars' and (storage.foldername(name))[1]=(select auth.uid())::text);
+
+
+-- Advanced catalog extensions: options, variants, media, SEO and merchandising.
+create table if not exists product_options(id uuid primary key default gen_random_uuid(),product_id uuid not null references products(id) on delete cascade,name text not null,position integer not null default 0,unique(product_id,name));
+create table if not exists product_option_values(id uuid primary key default gen_random_uuid(),option_id uuid not null references product_options(id) on delete cascade,value text not null,swatch_hex text,position integer not null default 0,unique(option_id,value));
+create table if not exists product_variants(id uuid primary key default gen_random_uuid(),product_id uuid not null references products(id) on delete cascade,title text not null,sku text unique,price numeric(12,2) not null check(price>=0),compare_price numeric(12,2),stock integer not null default 0 check(stock>=0),option_values jsonb not null default '{}'::jsonb,image_url text,barcode text,weight_grams integer,is_active boolean not null default true,created_at timestamptz not null default now());
+create table if not exists product_media(id uuid primary key default gen_random_uuid(),product_id uuid not null references products(id) on delete cascade,url text not null,alt_text text,media_type text not null default 'image' check(media_type in ('image','video')),position integer not null default 0,is_featured boolean not null default false,created_at timestamptz not null default now());
+alter table cart_items add column if not exists variant_id uuid references product_variants(id) on delete cascade;
+alter table orders add column if not exists currency text not null default 'GHS';
+alter table products add column if not exists brand text;
+alter table products add column if not exists tags text[] not null default '{}';
+alter table products add column if not exists features text[] not null default '{}';
+alter table products add column if not exists specifications jsonb not null default '{}'::jsonb;
+alter table products add column if not exists seo_title text;
+alter table products add column if not exists seo_description text;
+alter table product_options enable row level security;
+alter table product_option_values enable row level security;
+alter table product_variants enable row level security;
+alter table product_media enable row level security;
+drop policy if exists product_options_read on product_options;
+create policy product_options_read on product_options for select to anon,authenticated using(exists(select 1 from products p where p.id=product_id and (p.is_active=true or exists(select 1 from profiles pr where pr.id=(select auth.uid()) and pr.role='ADMIN'))));
+drop policy if exists product_options_admin_write on product_options;
+create policy product_options_admin_write on product_options for all to authenticated using(exists(select 1 from profiles pr where pr.id=(select auth.uid()) and pr.role='ADMIN')) with check(exists(select 1 from profiles pr where pr.id=(select auth.uid()) and pr.role='ADMIN'));
+drop policy if exists product_option_values_read on product_option_values;
+create policy product_option_values_read on product_option_values for select to anon,authenticated using(exists(select 1 from product_options o join products p on p.id=o.product_id where o.id=option_id and (p.is_active=true or exists(select 1 from profiles pr where pr.id=(select auth.uid()) and pr.role='ADMIN'))));
+drop policy if exists product_option_values_admin_write on product_option_values;
+create policy product_option_values_admin_write on product_option_values for all to authenticated using(exists(select 1 from profiles pr where pr.id=(select auth.uid()) and pr.role='ADMIN')) with check(exists(select 1 from profiles pr where pr.id=(select auth.uid()) and pr.role='ADMIN'));
+drop policy if exists product_variants_read on product_variants;
+create policy product_variants_read on product_variants for select to anon,authenticated using(exists(select 1 from products p where p.id=product_id and (p.is_active=true or exists(select 1 from profiles pr where pr.id=(select auth.uid()) and pr.role='ADMIN'))));
+drop policy if exists product_variants_admin_write on product_variants;
+create policy product_variants_admin_write on product_variants for all to authenticated using(exists(select 1 from profiles pr where pr.id=(select auth.uid()) and pr.role='ADMIN')) with check(exists(select 1 from profiles pr where pr.id=(select auth.uid()) and pr.role='ADMIN'));
+drop policy if exists product_media_read on product_media;
+create policy product_media_read on product_media for select to anon,authenticated using(exists(select 1 from products p where p.id=product_id and (p.is_active=true or exists(select 1 from profiles pr where pr.id=(select auth.uid()) and pr.role='ADMIN'))));
+drop policy if exists product_media_admin_write on product_media;
+create policy product_media_admin_write on product_media for all to authenticated using(exists(select 1 from profiles pr where pr.id=(select auth.uid()) and pr.role='ADMIN')) with check(exists(select 1 from profiles pr where pr.id=(select auth.uid()) and pr.role='ADMIN'));
+create index if not exists product_options_product_idx on product_options(product_id);
+create index if not exists product_option_values_option_idx on product_option_values(option_id);
+create index if not exists product_variants_product_idx on product_variants(product_id);
+create index if not exists product_variants_active_idx on product_variants(is_active);
+create index if not exists product_media_product_idx on product_media(product_id);
+drop constraint if exists cart_items_user_id_product_id_key;
+create unique index if not exists cart_items_user_product_variant_uidx on cart_items(user_id,product_id,variant_id);
