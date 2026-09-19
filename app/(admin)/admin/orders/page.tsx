@@ -1,6 +1,6 @@
 import {ClipboardList,Clock3,CheckCircle2,Truck, XCircle} from "lucide-react";
 import {createClient} from "../../../../lib/supabase/server";
-import styles from "../../../../admin/admin.module.css";
+import styles from "../../../admin/admin.module.css";
 
 function statusStyle(status:string){if(status==="CANCELLED")return styles.orderCancelled;if(["DELIVERED","COMPLETED"].includes(status))return styles.orderDone;if(["PAID","PROCESSING","CONFIRMED","SHIPPED"].includes(status))return styles.orderActive;return styles.orderPending}
 function statusIcon(status:string){if(status==="CANCELLED")return XCircle;if(["DELIVERED","COMPLETED"].includes(status))return CheckCircle2;if(["PAID","PROCESSING","CONFIRMED","SHIPPED"].includes(status))return Truck;return Clock3}
