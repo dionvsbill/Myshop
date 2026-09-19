@@ -17,6 +17,8 @@ export default function JumiaAdmin(){
  const[url,setUrl]=useState(""),[busy,setBusy]=useState(false),[msg,setMsg]=useState(""),[ok,setOk]=useState(false),[items,setItems]=useState<Product[]>([]),[search,setSearch]=useState("");
  async function load(){const{data}=await createClient().from("jumia_products").select("id,title,price,compare_price,images,rating,review_count,stock_status,source_url,brand,is_active").order("created_at",{ascending:false});setItems((data||[]) as Product[])}
  useEffect(()=>{void load()},[]);
+ function handleUrlChange(value:string){setUrl(cleanJumiaUrl(value))}
+ function handlePaste(e:React.ClipboardEvent<HTMLInputElement>){const pasted=e.clipboardData.getData("text");const extracted=cleanJumiaUrl(pasted);if(extracted!==pasted.trim()){e.preventDefault();setUrl(extracted)}}
  async function importProduct(e:React.FormEvent){e.preventDefault();const cleanUrl=cleanJumiaUrl(url);setUrl(cleanUrl);setBusy(true);setMsg("");setOk(false);try{const r=await fetch("/api/admin/jumia/import",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({url:cleanUrl})});const d=await r.json();if(!r.ok)throw new Error(d.error||"Import failed");setMsg("Product imported successfully.");setOk(true);setUrl("");await load()}catch(e:any){setMsg(e.message||"Import failed.")}finally{setBusy(false)}}
  async function remove(id:string){if(!confirm("Remove this Jumia product from Myshop?"))return;const{error}=await createClient().from("jumia_products").delete().eq("id",id);if(error){setMsg(error.message);setOk(false)}else{setMsg("Product removed.");setOk(true);await load()}}
  const filtered=useMemo(()=>items.filter(p=>(p.title+" "+(p.brand||"")).toLowerCase().includes(search.toLowerCase())),[items,search]);
