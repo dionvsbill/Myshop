@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import {useEffect,useMemo,useState} from "react";
-import {Activity,BarChart3,Boxes,CheckCircle2,ChevronRight,ClipboardList,DollarSign,Eye,FileText,FolderTree,ImagePlus,LayoutDashboard,Loader2,LogOut,Package,Pencil,Plus,RefreshCw,Search,Settings,ShieldCheck,ShoppingBag,Star,Tag,Trash2,TrendingUp,Upload,Users,X,Zap} from "lucide-react";
+import {Activity,BarChart3,Boxes,CheckCircle2,ChevronRight,ClipboardList,CreditCard,DollarSign,Eye,FileText,FolderTree,ImagePlus,LayoutDashboard,Loader2,LogOut,Package,Pencil,Plus,RefreshCw,Search,Settings,ShieldCheck,ShoppingBag,Star,Tag,Trash2,TrendingUp,Upload,Users,X,Zap} from "lucide-react";
 import {createClient} from "../../lib/supabase/client";
 import styles from "./admin.module.css";
 
