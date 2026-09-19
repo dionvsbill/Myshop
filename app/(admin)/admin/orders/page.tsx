@@ -1,30 +1,27 @@
-import { ClipboardList } from "lucide-react";
-import { createClient } from "../../../../lib/supabase/server";
+import {ClipboardList,Clock3,CheckCircle2,Truck, XCircle} from "lucide-react";
+import {createClient} from "../../../../lib/supabase/server";
+import styles from "../../../../admin/admin.module.css";
 
-export default async function Orders() {
-  const s = await createClient();
-  const { data, error } = await s.from("orders").select("id,order_number,total,status,created_at,profiles(email,full_name)").order("created_at", { ascending: false });
-  if (error) throw new Error(`Failed to load orders: ${error.message}`);
+function statusStyle(status:string){if(status==="CANCELLED")return styles.orderCancelled;if(["DELIVERED","COMPLETED"].includes(status))return styles.orderDone;if(["PAID","PROCESSING","CONFIRMED","SHIPPED"].includes(status))return styles.orderActive;return styles.orderPending}
+function statusIcon(status:string){if(status==="CANCELLED")return XCircle;if(["DELIVERED","COMPLETED"].includes(status))return CheckCircle2;if(["PAID","PROCESSING","CONFIRMED","SHIPPED"].includes(status))return Truck;return Clock3}
 
-  return (
-    <section>
-      <p className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-500">Sales</p>
-      <h1 className="mt-2 text-3xl font-black tracking-tight">Orders</h1>
-      <p className="mt-2 text-sm text-neutral-500">Manage fulfilment and customer orders.</p>
-      <div className="mt-7 overflow-hidden rounded-xl border bg-white">
-        <div className="hidden grid-cols-[1fr_1.3fr_120px_120px_120px] gap-4 border-b bg-neutral-50 px-5 py-3 text-xs font-bold uppercase tracking-wide text-neutral-500 md:grid"><span>Order</span><span>Customer</span><span>Total</span><span>Status</span><span>Date</span></div>
-        {(data ?? []).map((o) => {
-          const profile = Array.isArray(o.profiles) ? o.profiles[0] : o.profiles;
-          const statusClass = o.status === "CANCELLED" ? "bg-red-50 text-red-700" : o.status === "DELIVERED" ? "bg-emerald-50 text-emerald-700" : "bg-neutral-100 text-neutral-700";
-          return <div key={o.id} className="grid gap-3 border-b px-5 py-4 last:border-0 md:grid-cols-[1fr_1.3fr_120px_120px_120px] md:items-center">
-            <div className="flex items-center gap-3"><div className="grid h-9 w-9 place-items-center rounded-lg bg-neutral-100"><ClipboardList size={16}/></div><span className="font-semibold">{o.order_number}</span></div>
-            <div><p className="font-medium">{profile?.full_name || "Customer"}</p><p className="text-xs text-neutral-500">{profile?.email || "—"}</p></div>
-            <p className="font-semibold">GHS {Number(o.total).toFixed(2)}</p>
-            <span className={"w-fit rounded-full px-2.5 py-1 text-xs font-semibold " + statusClass}>{o.status}</span>
-            <p className="text-sm text-neutral-500">{new Date(o.created_at).toLocaleDateString()}</p>
-          </div>;
-        })}
-      </div>
-    </section>
-  );
+export default async function Orders(){
+ const s=await createClient();
+ const {data,error}=await s.from("orders").select("id,order_number,total,status,created_at,profiles(email,full_name)").order("created_at",{ascending:false});
+ if(error)throw new Error("Failed to load orders: "+error.message);
+ const orders=data||[];
+ return <section className={styles.adminPage}>
+  <div className={styles.pageIntro}><div><p className={styles.kicker}>Sales</p><h2>Orders</h2><p>Track customer purchases and fulfilment progress.</p></div><div className={styles.pageStat}><ClipboardList size={17}/><span><b>{orders.length}</b> orders</span></div></div>
+  <div className={styles.orderStats}><div><span>Total orders</span><b>{orders.length}</b></div><div><span>In progress</span><b>{orders.filter(o=>["PAID","PROCESSING","CONFIRMED","SHIPPED"].includes(o.status)).length}</b></div><div><span>Completed</span><b>{orders.filter(o=>["DELIVERED","COMPLETED"].includes(o.status)).length}</b></div><div><span>Cancelled</span><b>{orders.filter(o=>o.status==="CANCELLED").length}</b></div></div>
+  <div className={styles.orderPanel}><div className={styles.orderPanelHead}><div><b>Recent orders</b><small>Newest orders appear first</small></div><span>GHS totals</span></div>
+   <div className={styles.orderTableHead}><span>Order</span><span>Customer</span><span>Total</span><span>Status</span><span>Date</span></div>
+   {orders.length?orders.map((o:any)=>{const profile=Array.isArray(o.profiles)?o.profiles[0]:o.profiles;const Icon=statusIcon(o.status);return <div className={styles.orderRow} key={o.id}>
+    <div className={styles.orderNumber}><div><ClipboardList size={15}/></div><b>{o.order_number}</b></div>
+    <div className={styles.orderCustomer}><b>{profile?.full_name||"Customer"}</b><small>{profile?.email||"No email"}</small></div>
+    <b className={styles.orderTotal}>GHS {Number(o.total).toFixed(2)}</b>
+    <span className={statusStyle(o.status)}><Icon size={12}/>{o.status}</span>
+    <time>{new Date(o.created_at).toLocaleDateString("en-GH",{day:"2-digit",month:"short",year:"numeric"})}</time>
+   </div>}) : <div className={styles.emptyPanel}><ClipboardList size={28}/><b>No orders yet</b><span>Customer orders will appear here.</span></div>}
+  </div>
+ </section>
 }
