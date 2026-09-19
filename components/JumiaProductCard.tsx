@@ -7,7 +7,7 @@ export default function JumiaProductCard({product}:{product:JumiaCardItem}){
  const discount=product.compare_price&&Number(product.compare_price)>Number(product.price||0)?Math.round((1-Number(product.price||0)/Number(product.compare_price))*100):0;
  return <article className={styles.card}>
   <a href={product.source_url} target="_blank" rel="noreferrer" className={styles.imageLink}>
-   <div className={styles.imageWrap}><img src={product.images?.[0]||""} alt={product.title} loading="lazy"/>{discount>0&&<span className={styles.badge}>-{discount}%</span>}</div>
+   <div className={styles.imageWrap}><img src={product.images?.[0]||"https://www.jumia.com.gh/favicon.ico"} alt={product.title} loading="lazy"/>{discount>0&&<span className={styles.badge}>-{discount}%</span>}</div>
   </a>
   <div className={styles.content}>
    <a href={product.source_url} target="_blank" rel="noreferrer" className={styles.title}>{product.title}</a>
