@@ -1,7 +1,8 @@
 "use client";
 import {useEffect,useMemo,useState} from "react";
-import {ExternalLink,Plus,RefreshCw,Search,Trash2,Store,Link2,Image as ImageIcon,CheckCircle2,AlertCircle} from "lucide-react";
+import {AlertCircle,ArrowUpRight,CheckCircle2,ExternalLink,Image as ImageIcon,Link2,Plus,RefreshCw,Search,ShoppingBag,Trash2} from "lucide-react";
 import {createClient} from "../../../../lib/supabase/client";
+import styles from "../../../admin/admin.module.css";
 
 type Product={id:string;title:string;price:number|null;compare_price:number|null;images:string[];rating:number|null;review_count:number;stock_status:string|null;source_url:string;brand:string|null;is_active:boolean};
 
@@ -10,8 +11,6 @@ function cleanJumiaUrl(value:string){
  const m=text.match(/https?:\/\/(?:www\.)?jumia\.com\.gh\/[^\s<>"']+/i);
  return m?m[0].replace(/[.,;)]+$/,""):text;
 }
-
-
 
 export default function JumiaAdmin(){
  const[url,setUrl]=useState(""),[busy,setBusy]=useState(false),[msg,setMsg]=useState(""),[ok,setOk]=useState(false),[items,setItems]=useState<Product[]>([]),[search,setSearch]=useState("");
@@ -22,20 +21,47 @@ export default function JumiaAdmin(){
  async function importProduct(e:React.FormEvent){e.preventDefault();const cleanUrl=cleanJumiaUrl(url);setUrl(cleanUrl);setBusy(true);setMsg("");setOk(false);try{const r=await fetch("/api/admin/jumia/import",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({url:cleanUrl})});const d=await r.json();if(!r.ok)throw new Error(d.error||"Import failed");setMsg("Product imported successfully.");setOk(true);setUrl("");await load()}catch(e:any){setMsg(e.message||"Import failed.")}finally{setBusy(false)}}
  async function remove(id:string){if(!confirm("Remove this Jumia product from Myshop?"))return;const{error}=await createClient().from("jumia_products").delete().eq("id",id);if(error){setMsg(error.message);setOk(false)}else{setMsg("Product removed.");setOk(true);await load()}}
  const filtered=useMemo(()=>items.filter(p=>(p.title+" "+(p.brand||"")).toLowerCase().includes(search.toLowerCase())),[items,search]);
- return <section className="min-h-full">
-  <div className="rounded-2xl border border-orange-100 bg-gradient-to-br from-orange-50 via-white to-white p-6 shadow-sm md:p-8">
-   <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-    <div className="max-w-2xl"><div className="mb-3 inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[.16em] text-orange-600"><Store size={13}/> Jumia catalogue</div><h1 className="text-3xl font-black tracking-tight text-slate-950 md:text-4xl">Jumia Store</h1><p className="mt-3 text-sm leading-6 text-slate-600">Import real Jumia Ghana products into Myshop with their catalogue information and images. Customers can view the product and continue through your JForce flow.</p></div>
-    <a href="https://www.jumia.com.gh/" target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 py-3 text-sm font-bold text-white transition hover:bg-orange-600"><ExternalLink size={16}/> Browse Jumia</a>
+ const active=items.filter(x=>x.is_active).length;
+ return <section className={styles.jumiaPage}>
+  <div className={styles.jumiaHeader}>
+   <div>
+    <div className={styles.jumiaKicker}><ShoppingBag size={13}/> JUMIA CATALOGUE</div>
+    <h1>Jumia Store</h1>
+    <p>Bring real Jumia Ghana products into Myshop. Customers see the catalogue here, then continue to Jumia for checkout, delivery and fulfilment.</p>
    </div>
-   <form onSubmit={importProduct} className="mt-7 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
-    <div className="mb-3 flex items-center gap-2 text-sm font-black text-slate-900"><Link2 size={16} className="text-orange-500"/> Import a product</div>
-    <p className="mb-4 text-xs leading-5 text-slate-500">Paste a normal Jumia URL or the entire share message from your phone. Myshop automatically extracts the Jumia link.</p>
-    <div className="flex flex-col gap-3 lg:flex-row"><input value={url} onChange={e=>handleUrlChange(e.target.value)} onPaste={handlePaste} placeholder="Check out this product I found: https://www.jumia.com.gh/..." className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100" required/><button className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60" disabled={busy}>{busy?<RefreshCw size={16} className="animate-spin"/>:<Plus size={16}/>} {busy?"Importing...":"Import product"}</button></div>
-    {msg&&<div className={"mt-4 flex items-start gap-2 rounded-xl border px-4 py-3 text-xs leading-5 "+(ok?"border-emerald-200 bg-emerald-50 text-emerald-700":"border-red-200 bg-red-50 text-red-700")}>{ok?<CheckCircle2 size={16} className="mt-0.5 shrink-0"/>:<AlertCircle size={16} className="mt-0.5 shrink-0"/>}<span>{msg}</span></div>}
+   <a className={styles.jumiaBrowse} href="https://www.jumia.com.gh/" target="_blank" rel="noreferrer"><ExternalLink size={15}/> Browse Jumia</a>
+  </div>
+
+  <div className={styles.jumiaStats}>
+   <div><span>Imported</span><strong>{items.length}</strong><small>Catalogue products</small></div>
+   <div><span>Active</span><strong>{active}</strong><small>Visible to customers</small></div>
+   <div><span>Checkout</span><strong>Jumia</strong><small>Customer completes purchase there</small></div>
+  </div>
+
+  <div className={styles.jumiaImport}>
+   <div className={styles.jumiaImportHead}>
+    <div className={styles.jumiaIcon}><Link2 size={18}/></div>
+    <div><h2>Import a Jumia product</h2><p>Paste a normal product URL or the complete share message copied from your phone.</p></div>
+   </div>
+   <form onSubmit={importProduct}>
+    <div className={styles.jumiaInputRow}>
+     <input value={url} onChange={e=>handleUrlChange(e.target.value)} onPaste={handlePaste} placeholder="https://www.jumia.com.gh/product-name-123456.html" required/>
+     <button disabled={busy}>{busy?<RefreshCw size={16} className={styles.spin}/>:<Plus size={16}/>} {busy?"Importing":"Import product"}</button>
+    </div>
+    <div className={styles.jumiaHint}><span>Works with:</span> Jumia product URL, copied Jumia share text, or a link containing tracking parameters.</div>
+    {msg&&<div className={ok?styles.jumiaSuccess:styles.jumiaError}>{ok?<CheckCircle2 size={17}/>:<AlertCircle size={17}/>}<div><b>{ok?"Imported successfully":"Import could not be completed"}</b><p>{msg}</p></div></div>}
    </form>
   </div>
-  <div className="mt-7 flex flex-col gap-3 md:flex-row md:items-center md:justify-between"><div><p className="text-xs font-black uppercase tracking-[.16em] text-orange-500">Imported catalogue</p><h2 className="mt-1 text-xl font-black text-slate-950">{items.length} product{items.length===1?"":"s"}</h2></div><div className="relative w-full md:w-80"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search imported products" className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-9 pr-3 text-sm outline-none focus:border-orange-400"/></div></div>
-  {filtered.length===0?<div className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center"><ImageIcon className="mx-auto text-slate-300" size={34}/><p className="mt-3 text-sm font-bold text-slate-700">{items.length?"No products match your search.":"No Jumia products imported yet."}</p><p className="mt-1 text-xs text-slate-400">Paste a Jumia product share link above to add one.</p></div>:<div className="mt-5 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">{filtered.map(p=><article key={p.id} className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"><div className="relative h-60 bg-slate-50">{p.images?.[0]?<img src={p.images[0]} alt={p.title} className="h-full w-full object-contain p-4 transition duration-300 group-hover:scale-[1.02]"/>:<div className="grid h-full place-items-center text-slate-300"><ImageIcon size={42}/></div>}<span className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-orange-600 shadow-sm">Jumia</span></div><div className="p-5"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{p.brand||"Jumia product"}</p><h3 className="mt-1 line-clamp-2 text-sm font-black leading-5 text-slate-900">{p.title}</h3></div>{p.rating!=null&&<span className="shrink-0 rounded-lg bg-amber-50 px-2 py-1 text-[10px] font-black text-amber-700">★ {p.rating}</span>}</div><div className="mt-4 flex items-end justify-between gap-3"><div><p className="text-xl font-black text-slate-950">{p.price!=null?"GH₵ "+Number(p.price).toLocaleString():"Price unavailable"}</p>{p.compare_price!=null&&<p className="text-xs text-slate-400 line-through">GH₵ {Number(p.compare_price).toLocaleString()}</p>}</div><span className={"rounded-full px-2.5 py-1 text-[9px] font-black "+((p.stock_status||"").toLowerCase().includes("out")?"bg-red-50 text-red-600":"bg-emerald-50 text-emerald-700")}>{(p.stock_status||"Available").replace(/https?:\/\/schema\.org\//i,"")}</span></div><div className="mt-4 flex gap-2"><a href={p.source_url} target="_blank" rel="noreferrer" className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-bold text-slate-700 hover:border-orange-200 hover:text-orange-600"><ExternalLink size={14}/> View on Jumia</a><button onClick={()=>remove(p.id)} className="inline-flex items-center justify-center rounded-xl border border-red-100 px-3 py-2.5 text-red-600 hover:bg-red-50" aria-label="Remove product"><Trash2 size={14}/></button></div></div></article>)}</div>}
+
+  <div className={styles.jumiaSectionHead}>
+   <div><span className={styles.jumiaKicker}>CATALOGUE</span><h2>Imported products</h2><p>These products are sourced from Jumia and are not stored as Myshop inventory.</p></div>
+   <div className={styles.jumiaSearch}><Search size={16}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search catalogue"/></div>
+  </div>
+
+  {filtered.length===0?<div className={styles.jumiaEmpty}><ImageIcon size={40}/><h3>{items.length?"No matching products":"Your catalogue is empty"}</h3><p>{items.length?"Try another search.":"Paste a Jumia product link above to import the first product."}</p></div>:
+  <div className={styles.jumiaGrid}>{filtered.map(p=><article className={styles.jumiaCard} key={p.id}>
+   <div className={styles.jumiaImage}>{p.images?.[0]?<img src={p.images[0]} alt={p.title}/>:<ImageIcon size={40}/>}<span>JUMIA</span></div>
+   <div className={styles.jumiaCardBody}><div className={styles.jumiaMeta}><small>{p.brand||"Jumia product"}</small>{p.rating!=null&&<b>★ {p.rating}</b>}</div><h3>{p.title}</h3><div className={styles.jumiaPrice}><strong>{p.price!=null?"GH₵ "+Number(p.price).toLocaleString():"Price on Jumia"}</strong>{p.compare_price!=null&&<del>GH₵ {Number(p.compare_price).toLocaleString()}</del>}</div><div className={styles.jumiaCardActions}><a href={p.source_url} target="_blank" rel="noreferrer">View on Jumia <ArrowUpRight size={14}/></a><button onClick={()=>remove(p.id)} aria-label="Remove product"><Trash2 size={15}/></button></div></div>
+  </article>)}</div>}
  </section>
 }
