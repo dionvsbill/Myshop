@@ -1,23 +1,27 @@
 import Link from "next/link";
-import { Package, Plus } from "lucide-react";
-import { createClient } from "../../../../lib/supabase/server";
+import {Package,Plus,Search,ArrowUpRight} from "lucide-react";
+import {createClient} from "../../../../lib/supabase/server";
 import EditProductModal from "../../../../components/EditProductModal";
+import styles from "../../../../admin/admin.module.css";
 
-export default async function AdminProducts() {
-  const s=await createClient();
-  const {data,error}=await s.from("products").select("id,title,price,stock,is_active,categories(name)").order("created_at",{ascending:false});
-  if(error) throw new Error(error.message);
-  return <section>
-    <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="eyebrow">Catalogue management</p><h1 className="page-title mt-2">Products</h1><p className="mt-2 text-sm text-neutral-500">{data?.length||0} products in your catalogue</p></div><Link href="/admin/products/new" className="btn-primary gap-2"><Plus size={17}/> Add product</Link></div>
-    <div className="mt-7 overflow-hidden rounded-lg border bg-white shadow-sm">
-      <div className="hidden grid-cols-[1fr_120px_100px_150px_90px] gap-4 border-b bg-neutral-50 px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-neutral-500 md:grid"><span>Product</span><span>Price</span><span>Stock</span><span>Category</span><span>Action</span></div>
-      {(data||[]).map((p:any)=>{const category=Array.isArray(p.categories)?p.categories[0]:p.categories;return <div key={p.id} className="grid gap-3 border-b px-5 py-4 last:border-0 md:grid-cols-[1fr_120px_100px_150px_90px] md:items-center">
-        <Link href={"/product/"+p.id} className="flex items-center gap-3"><div className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-neutral-100"><Package size={18} className="text-neutral-400"/></div><div className="min-w-0"><p className="truncate font-semibold">{p.title}</p><span className={"text-xs "+(p.is_active?"text-emerald-600":"text-neutral-400")}>{p.is_active?"Published":"Draft"}</span></div></Link>
-        <span className="text-sm font-bold">GHS {Number(p.price).toFixed(2)}</span>
-        <span className={"text-sm "+(Number(p.stock)<5?"font-bold text-red-600":"text-neutral-600")}>{p.stock}</span>
-        <span className="text-sm text-neutral-600">{category?.name||"Uncategorised"}</span>
-        <EditProductModal product={p}/>
-      </div>})}
-    </div>
-  </section>;
+export default async function AdminProducts(){
+ const s=await createClient();
+ const {data,error}=await s.from("products").select("id,slug,title,price,stock,is_active,images,categories(name)").order("created_at",{ascending:false});
+ if(error)throw new Error(error.message);
+ const products=data||[];
+ return <section className={styles.adminPage}>
+  <div className={styles.pageIntro}>
+   <div><p className={styles.kicker}>Catalogue management</p><h2>Products</h2><p>Manage pricing, stock and visibility from one place.</p></div>
+   <Link href="/admin/products/new" className={styles.primary}><Plus size={16}/> Add product</Link>
+  </div>
+  <div className={styles.productSummary}><div><Package size={17}/><span><b>{products.length}</b> products</span></div><span>Live {products.filter(p=>p.is_active).length} · Hidden {products.filter(p=>!p.is_active).length}</span><div className={styles.adminSearch}><Search size={15}/><input placeholder="Search products"/></div></div>
+  <div className={styles.adminProductGrid}>{products.map((p:any)=>{const cat=Array.isArray(p.categories)?p.categories[0]:p.categories;const image=p.images?.[0];const stock=Number(p.stock||0);return <article key={p.id} className={styles.adminProductCard}>
+   <div className={styles.adminProductImage}>{image?<img src={image} alt="" loading="lazy"/>:<Package size={30}/>}<span className={p.is_active?styles.cardLive:styles.cardHidden}>{p.is_active?"LIVE":"HIDDEN"}</span></div>
+   <div className={styles.adminProductBody}><div className={styles.adminProductTitle}><div><h3>{p.title}</h3><small>{cat?.name||"Uncategorised"}</small></div><span className={stock<=0?styles.stockOut:stock<5?styles.stockLow:styles.stockGood}>{stock<=0?"OUT":stock+" in stock"}</span></div>
+    <div className={styles.adminProductPrice}>GHS {Number(p.price).toFixed(2)}</div>
+    <div className={styles.adminProductActions}><EditProductModal product={p}/><Link href={"/product/"+(p.slug||p.id)} target="_blank"><ArrowUpRight size={14}/> View</Link></div>
+   </div>
+  </article>})}</div>
+  {!products.length&&<div className={styles.emptyPanel}><Package size={28}/><b>No products yet</b><span>Add your first product to start selling.</span></div>}
+ </section>
 }
