@@ -117,16 +117,50 @@ async function productApiFallback(sourceId:string){
   return null;
 }
 
+async function jinaFetch(url:string){
+  const headers={
+    "Accept":"text/plain,text/markdown,*/*",
+    "X-Engine":"browser",
+    "X-Proxy":"gh",
+    "X-No-Cache":"true",
+    "X-Timeout":"30",
+    "X-User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36",
+    "X-Referer":"https://www.google.com/"
+  };
+  return fetchText("https://r.jina.ai/"+url,headers);
+}
+async function jinaSearch(query:string){
+  const headers={
+    "Accept":"text/plain,text/markdown,*/*",
+    "X-Engine":"browser",
+    "X-Proxy":"gh",
+    "X-No-Cache":"true",
+    "X-Timeout":"30"
+  };
+  return fetchText("https://s.jina.ai/?q="+encodeURIComponent(query),headers);
+}
+
 async function catalogFallback(normalized:string,sourceId:string){
   const q=searchQueryFromUrl(normalized);
   if(!q)return null;
-  const url="https://www.jumia.com.gh/catalog/?q="+encodeURIComponent(q);
-  let r=await fetchText(url,{"User-Agent":"Mozilla/5.0","Accept":"text/html,application/xhtml+xml,*/*;q=0.8","Accept-Language":"en-US,en;q=0.9"});
-  if(!r.text){
-    r=await fetchText("https://r.jina.ai/"+url,{"User-Agent":"Myshop Jumia importer","Accept":"text/plain"});
+
+  // Jumia can block Render's IP while the same public page is available through
+  // a browser-rendered Reader proxy. Search the exact product id first so we do
+  // not accidentally import another product from the catalogue.
+  const exact=await jinaSearch("site:jumia.com.gh "+sourceId+" "+q);
+  if(exact.text){
+    const exactProduct=extractCatalogProduct(exact.text,sourceId);
+    if(exactProduct?.price!=null&&(exactProduct.images?.length||exactProduct.title))return exactProduct;
   }
-  if(!r.text)return null;
-  return extractCatalogProduct(r.text,sourceId);
+
+  const url="https://www.jumia.com.gh/catalog/?q="+encodeURIComponent(q);
+  const r=await jinaFetch(url);
+  if(r.text){
+    const product=extractCatalogProduct(r.text,sourceId);
+    if(product)return product;
+  }
+
+  return null;
 }
 function titleFromUrl(url:string){
   const m=url.match(/jumia\.com\.gh\/([^/?#]+?)-(\d+)\.html/i);
@@ -145,6 +179,7 @@ function isJumiaImage(v:string){
     !/(?:favicon|logo|sprite|icon|placeholder)/i.test(x);
 }
 function extractImages(source:string){
+  source=source.replace(/\\\\\(/g,"(").replace(/\\\\\)/g,")").replace(/\\\\\_/g,"_");
   const out:string[]=[];
   const add=(v:string)=>{
     const x=clean(v).replace(/\\/g,"").replace(/\\\//g,"/").trim();
@@ -211,7 +246,7 @@ export async function POST(req:NextRequest){
 
   const sources: Array<{url:string;headers:Record<string,string>}>=[
     {url:normalized,headers:{"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36","Accept":"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8","Accept-Language":"en-US,en;q=0.9","Referer":"https://www.google.com/"}},
-    {url:"https://r.jina.ai/"+normalized,headers:{"User-Agent":"Mozilla/5.0","Accept":"text/plain"}},
+    {url:"https://r.jina.ai/"+normalized,headers:{"User-Agent":"Mozilla/5.0","Accept":"text/plain,text/markdown,*/*","X-Engine":"browser","X-Proxy":"gh","X-No-Cache":"true","X-Timeout":"30","X-User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36","X-Referer":"https://www.google.com/"}},
     {url:"https://www-jumia-com-gh.translate.goog/"+normalized.split("/").slice(3).join("/")+"?_x_tr_sl=auto&_x_tr_tl=en&_x_tr_hl=en",headers:{"User-Agent":"Mozilla/5.0","Accept":"text/html,application/xhtml+xml,*/*;q=0.8"}}
   ];
 
@@ -251,7 +286,7 @@ export async function POST(req:NextRequest){
   }
 
   if(!product?.name||!fallback.images?.length||fallback.price==null){
-    const reader=await fetchText("https://r.jina.ai/"+normalized,{"User-Agent":"Myshop Jumia importer","Accept":"text/plain"});
+    const reader=await jinaFetch(normalized);
     if(reader.text){
       const d=readerData(reader.text,normalized);
       fallback={...fallback,title:fallback.title||d.title,images:[...(fallback.images||[]),...d.images],price:fallback.price??d.price};
