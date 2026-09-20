@@ -77,7 +77,7 @@ function isJumiaImage(v:string){
   const x=clean(v).replace(/\\/g,"").replace(/\\\//g,"/");
   return /^https?:\/\//i.test(x)
     && /(?:^|\.)jumia\.(?:is|com\.gh)\//i.test(x)
-    && /\.(?:jpg|jpeg|png|webp)(?:[?#]|$)/i.test(x)
+    && /(?:\.(?:jpg|jpeg|png|webp)(?:[?#]|$)|\/unsafe\/|\/product\/|\/cms\/external\/pet\/)/i.test(x)
     && !/(?:favicon|logo|sprite|icon|placeholder)/i.test(x);
 }
 
@@ -153,6 +153,36 @@ async function jinaReader(url:string){
     "X-Timeout":"30",
     "X-User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36"
   });
+}
+
+
+async function microlinkFetch(url:string){
+  try{
+    const api="https://api.microlink.io/?url="+encodeURIComponent(url)
+      +"&meta=true&prerender=true&data.html.selector=html&data.html.attr=outerHTML";
+    const r=await fetch(api,{headers:{"Accept":"application/json","User-Agent":"Mozilla/5.0 Myshop Jumia importer"},cache:"no-store"});
+    if(!r.ok)return null;
+    const j=await r.json();
+    if(j?.status!=="success")return null;
+    const d=j.data||{};
+    const rendered=typeof d.html==="string"?d.html:"";
+    const image=typeof d.image==="string"?d.image:d.image?.url||"";
+    const source=rendered+"\n"+(typeof d.markdown==="string"?d.markdown:"")+"\n"+JSON.stringify(d);
+    const p=findProduct(jsonLd(rendered));
+    const offers=Array.isArray(p?.offers)?p.offers[0]:p?.offers;
+    const images=imageValues(p?.image).concat(image,extractImages(source)).filter(isJumiaImage);
+    const price=num(offers?.price)??extractPrice(source);
+    return {
+      html:rendered,
+      title:clean(p?.name||d.title||""),
+      images:[...new Set(images)],
+      price,
+      rating:num(p?.aggregateRating?.ratingValue),
+      reviewCount:Number(p?.aggregateRating?.reviewCount||0)||0,
+      description:clean(p?.description||d.description||""),
+      product:p
+    };
+  }catch{return null;}
 }
 
 async function jinaSearch(q:string){
@@ -249,6 +279,24 @@ export async function POST(req:NextRequest){
         url:fallback.url||d.url
       };
       if(fallback.images?.length&&fallback.price!=null)break;
+    }
+  }
+
+  // Microlink uses a real browser and is kept before search/catalogue fallbacks.
+  if(!fallback.images?.length||fallback.price==null){
+    const m=await microlinkFetch(normalized);
+    if(m){
+      product=product||m.product;
+      if(m.html)html=html||m.html;
+      fallback={
+        ...fallback,
+        title:fallback.title||m.title,
+        images:[...(fallback.images||[]),...m.images],
+        price:fallback.price??m.price,
+        rating:fallback.rating??m.rating,
+        reviewCount:fallback.reviewCount||m.reviewCount,
+        description:fallback.description||m.description
+      };
     }
   }
 
