@@ -3,12 +3,12 @@ import {createClient} from "../../../../../lib/supabase/server";
 
 function clean(v:any){return String(v??"").replace(/&amp;/g,"&").replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/\\\//g,"/").trim()}
 function meta(html:string,name:string){
-  const n=name.replace(/[.*+?^$\{\}()|[\]\\]/g,"\\$&");
+  const escaped=name.replace(/[.*+?^$\\{\\}()|[\\]\\\\]/g,"\\\\$&");
   const patterns=[
-    new RegExp("<meta[^>]+(?:property|name)=[\\"']"+n+"[\\"'][^>]+content=[\\"']([^\\"']+)[\\"']","i"),
-    new RegExp("<meta[^>]+content=[\\"']([^\\"']+)[\\"'][^>]+(?:property|name)=[\\"']"+n+"[\\"']","i")
+    new RegExp(`<meta[^>]+(?:property|name)=["']${escaped}["'][^>]+content=["']([^"']+)["']`,"i"),
+    new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${escaped}["']`,"i")
   ];
-  for(const r of patterns){const m=r.exec(html);if(m)return clean(m[1])}
+  for(const pattern of patterns){const match=pattern.exec(html);if(match)return clean(match[1])}
   return "";
 }
 function jsonScripts(html:string){
@@ -71,7 +71,7 @@ function extractImages(source:string){
     m[1].split(/\\s*,\\s*|\\s+/).forEach(add);
     if(out.length>=40)break;
   }
-  const urls=source.replace(/\\\\\\//g,"/").match(/https?:\\/\\/[^\\s"'<>]+/gi)||[];
+  const urls=source.replace(/\\//g,"/").match(/https?:\\/\\/[^\\s"'<>]+/gi)||[];
   for(const u of urls){add(u);if(out.length>=40)break}
   return out;
 }
