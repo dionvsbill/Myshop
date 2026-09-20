@@ -53,9 +53,13 @@ function extractCatalogProduct(html:string,sourceId:string){
   if(!match)return null;
   const pos=match.index;
   const window=html.slice(Math.max(0,pos-5000),Math.min(html.length,pos+12000));
-  const titleMatch=window.match(/(?:aria-label|title)=[\"']([^\"']+)[\"']/i)||window.match(/<h[1-6][^>]*>([\\s\\S]*?)<\\/h[1-6]>/i);
-  const priceMatch=window.match(/(?:GH₵|GHS|GHC|GH\\s*₵|₵)\\s*[0-9][0-9,\\s]*(?:\\.[0-9]{1,2})?/i);
-  const imageMatch=window.match(/(?:src|data-src|data-image|data-original)=[\"']([^\"']+)[\"']/i);
+  const titleAttr=new RegExp("(?:aria-label|title)=[\\\"']([^\\\"']+)[\\\"']","i");
+  const titleHeading=new RegExp("<h[1-6][^>]*>([\\s\\S]*?)</h[1-6]>","i");
+  const pricePattern=new RegExp("(?:GH₵|GHS|GHC|GH\\s*₵|₵)\\s*[0-9][0-9,\\s]*(?:\\.[0-9]{1,2})?","i");
+  const imageAttr=new RegExp("(?:src|data-src|data-image|data-original)=[\\\"']([^\\\"']+)[\\\"']","i");
+  const titleMatch=titleAttr.exec(window)||titleHeading.exec(window);
+  const priceMatch=pricePattern.exec(window);
+  const imageMatch=imageAttr.exec(window);
   const title=clean(titleMatch?.[1]||"").replace(/<[^>]+>/g," ");
   const price=num(priceMatch?.[0]);
   const image=clean(imageMatch?.[1]||"");
