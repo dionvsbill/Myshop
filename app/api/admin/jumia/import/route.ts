@@ -13,7 +13,7 @@ function meta(html:string,name:string){
 }
 function jsonScripts(html:string){
   const out:any[]=[];
-  const re=/<script\\b[^>]*?(?:type=[\\"'](?:application\\/ld\\+json|application\\/json)[\\"'])?[^>]*>([\\s\\S]*?)<\\/script>/gi;
+  const re=/<script\b[^>]*?(?:type=["'](?:application\/ld\+json|application\/json)["'])?[^>]*>([\s\S]*?)<\/script>/gi;
   let m:RegExpExecArray|null;
   while((m=re.exec(html))!==null){
     const raw=m[1].trim();
@@ -36,16 +36,16 @@ function findProduct(v:any):any{
 function arr(v:any){return Array.isArray(v)?v:[v].filter(Boolean)}
 function num(v:any){
   if(v===null||v===undefined)return null;
-  const s=String(v).replace(/&nbsp;/gi," ").replace(/GH₵|GHS|GHC|GH\\s*₵|₵/gi,"").replace(/,/g,"").trim();
-  const m=s.match(/\\d+(?:\\.\\d{1,2})?/);
+  const s=String(v).replace(/&nbsp;/gi," ").replace(/GH₵|GHS|GHC|GH\s*₵|₵/gi,"").replace(/,/g,"").trim();
+  const m=s.match(/\d+(?:\.\d{1,2})?/);
   if(!m)return null;
   const n=Number(m[0]);
   return Number.isFinite(n)&&n>0?n:null;
 }
-function productId(url:string){return (url.match(/-(\\d+)\\.html(?:$|[?#])/i)||[])[1]||null}
+function productId(url:string){return (url.match(/-(\d+)\.html(?:$|[?#])/i)||[])[1]||null}
 function titleFromUrl(url:string){
-  const m=url.match(/jumia\\.com\\.gh\\/([^/?#]+?)-(\\d+)\\.html/i);
-  return m?clean(m[1].replace(/[-_]+/g," ").replace(/\\b\\w/g,(x:string)=>x.toUpperCase())):"";
+  const m=url.match(/jumia\.com\.gh\/([^/?#]+?)-(\d+)\.html/i);
+  return m?clean(m[1].replace(/[-_]+/g," ").replace(/\b\w/g,(x:string)=>x.toUpperCase())):"";
 }
 function imageValues(v:any):string[]{
   if(!v)return [];
@@ -56,7 +56,7 @@ function imageValues(v:any):string[]{
 }
 function isJumiaImage(v:string){
   const x=clean(v).replace(/\\/g,"").replace(/\\\//g,"/");
-  return /^https?:\\/\\//i.test(x)&&/^(?:[^/]+\\.)?jumia\\.(?:is|com\\.gh)\\//i.test(x)&&
+  return /^https?:\/\//i.test(x)&&/^(?:[^/]+\.)?jumia\.(?:is|com\.gh)\//i.test(x)&&
     !/(?:favicon|logo|sprite|icon|placeholder)/i.test(x);
 }
 function extractImages(source:string){
@@ -65,35 +65,33 @@ function extractImages(source:string){
     const x=clean(v).replace(/\\/g,"").replace(/\\\//g,"/").trim();
     if(isJumiaImage(x)&&out.indexOf(x)===-1)out.push(x);
   };
-  const attr=/\\b(?:src|data-src|data-original|data-image|data-lazy-src|data-original-src|content)=["']([^"']+)["']/gi;
+  const attr=/\b(?:src|data-src|data-original|data-image|data-lazy-src|data-original-src|content)=["']([^"']+)["']/gi;
   let m:RegExpExecArray|null;
   while((m=attr.exec(source))!==null){
-    m[1].split(/\\s*,\\s*|\\s+/).forEach(add);
+    m[1].split(/\s*,\s*|\s+/).forEach(add);
     if(out.length>=40)break;
   }
-  const urls=source.replace(/\\//g,"/").match(/https?:\\/\\/[^\\s"'<>]+/gi)||[];
+  const urls=source.replace(/\\\//g,"/").match(/https?:\/\/[^\s"'<>]+/gi)||[];
   for(const u of urls){add(u);if(out.length>=40)break}
   return out;
 }
 function parseEmbedded(html:string){
   let product:any=null;
   for(const x of jsonScripts(html)){product=product||findProduct(x)}
-  const next=/<script[^>]+id=["']__NEXT_DATA__["'][^>]*>([\\s\\S]*?)<\\/script>/i.exec(html);
-  if(next){
-    try{product=product||findProduct(JSON.parse(next[1]))}catch{}
-  }
+  const next=/<script[^>]+id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i.exec(html);
+  if(next){try{product=product||findProduct(JSON.parse(next[1]))}catch{}}
   return product;
 }
 function extractPrice(html:string){
   const candidates=[
     meta(html,"product:price:amount"),meta(html,"og:price:amount"),meta(html,"price"),
-    ...((html.match(/(?:GH₵|GHS|GHC|GH\\s*₵|₵)\\s*[0-9][0-9,\\s]*(?:\\.[0-9]{1,2})?/gi)||[]))
+    ...(html.match(/(?:GH₵|GHS|GHC|GH\s*₵|₵)\s*[0-9][0-9,\s]*(?:\.[0-9]{1,2})?/gi)||[])
   ];
   for(const x of candidates){const n=num(x);if(n!=null)return n}
   return null;
 }
 function readerData(text:string,url:string){
-  const title=(text.match(/^#\\s+(.+)$/m)||text.match(/^(?:Title|Product name)\\s*:\\s*(.+)$/im)||[])[1]||"";
+  const title=(text.match(/^#\s+(.+)$/m)||text.match(/^(?:Title|Product name)\s*:\s*(.+)$/im)||[])[1]||"";
   const price=extractPrice(text);
   return {title:clean(title),price,images:extractImages(text),url};
 }
