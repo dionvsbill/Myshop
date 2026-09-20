@@ -6,12 +6,12 @@ function meta(html:string,name:string){const patterns=[new RegExp("<meta[^>]+(?:
 function scripts(html:string){const out:any[]=[];const start="<script";const end="</script>";let pos=0;while((pos=html.indexOf(start,pos))!==-1){const openEnd=html.indexOf(">",pos);if(openEnd===-1)break;const tag=html.slice(pos,openEnd+1).toLowerCase();if(tag.includes("application/ld+json")){const close=html.indexOf(end,openEnd+1);if(close===-1)break;const raw=html.slice(openEnd+1,close).trim();try{out.push(JSON.parse(raw))}catch{}pos=close+end.length}else pos=openEnd+1}return out}
 function findProduct(v:any):any{if(!v)return null;if(Array.isArray(v)){for(const x of v){const p=findProduct(x);if(p)return p}return null}if(typeof v!=="object")return null;if(v["@type"]==="Product"||(Array.isArray(v["@type"])&&v["@type"].includes("Product")))return v;for(const x of Object.values(v)){const p=findProduct(x);if(p)return p}return null}
 function arr(v:any){return Array.isArray(v)?v:[v].filter(Boolean)}
-function num(v:any){if(v===null||v===undefined||String(v).trim()==="")return null;const raw=String(v).replace(/,/g,"").replace(/\s+/g," ");const matches=raw.match(/[0-9]+(?:\.[0-9]{1,2})?/g)||[];const n=Number(matches.join("")||"");return Number.isFinite(n)&&n>0?n:null}
+function num(v:any){if(v===null||v===undefined||String(v).trim()==="")return null;const raw=String(v).replace(/&nbsp;/gi," ").replace(/,/g,"").trim();const m=raw.match(/[0-9]+(?:[\s.][0-9]{3})*(?:\.[0-9]{1,2})?/);if(!m)return null;const normalized=m[0].replace(/\s+/g,"").replace(/^(\d+)\.(\d{3})$/,"$1$2");const n=Number(normalized);return Number.isFinite(n)&&n>0?n:null}
 function slugify(s:string){return s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"").slice(0,90)||"jumia-product"}
 function productId(url:string){return (url.match(/-(\d+)\.html(?:$|\?)/i)||[])[1]||null}
 function titleFromUrl(url:string){const m=url.match(/jumia\.com\.gh\/([^/?#]+?)-(\d+)\.html/i);if(!m)return "";return m[1].replace(/[-_]+/g," ").replace(/\b\w/g,x=>x.toUpperCase()).trim()}
 function imageValues(v:any):string[]{if(!v)return [];if(typeof v==="string")return [v];if(Array.isArray(v))return v.flatMap(imageValues);if(typeof v==="object")return imageValues(v.url||v.contentUrl||v.src||v.originalUrl||v.image);return []}
-function extractImages(source:string){const out:string[]=[];const attr=/\b(?:src|data-src|data-original|data-image|content)=["']([^"']+)["']/gi;let m:RegExpExecArray|null;while((m=attr.exec(source))!==null){const x=clean(m[1]).replace(/\\/g,"").replace(/\\\//g,"/").replace(/&amp;/g,"&");if(/^https?:\/\//i.test(x)&&/jumia/i.test(x)&&!/(?:favicon|logo|sprite|icon)/i.test(x)&&out.indexOf(x)===-1)out.push(x)}const re=/https?:\/\/[^\s"'<>\\]+/gi;while((m=re.exec(source))!==null){const x=m[0].replace(/[),;]+$/,"").replace(/\\/g,"").replace(/\\\//g,"/").replace(/&amp;/g,"&");if(/jumia/i.test(x)&&/(?:jpg|jpeg|png|webp|unsafe\/fit-in|product\/)/i.test(x)&&!/(?:favicon|logo|sprite|icon)/i.test(x)&&out.indexOf(x)===-1)out.push(x);if(out.length>=20)break}return out}
+function extractImages(source:string){const out:string[]=[];const normalized=source.replace(/\\\\\//g,"/").replace(/\\\//g,"/").replace(/&amp;/g,"&quot;").replace(/&quot;/g,'"');const add=(v:string)=>{const x=clean(v).replace(/\\/g,"").replace(/\\\//g,"/").replace(/&amp;/g,"&").replace(/&quot;/g,'"').trim();if(/^https?:\/\//i.test(x)&&/^(?:https?:\/\/)?(?:[^/]+\.)?jumia\.(?:is|com\.gh)\//i.test(x)&&/(?:jpg|jpeg|png|webp|unsafe\/fit-in|product\/)/i.test(x)&&!/(?:favicon|logo|sprite|icon)/i.test(x)&&out.indexOf(x)===-1)out.push(x)};const attr=/\b(?:src|data-src|data-original|data-image|data-lazy-src|srcset|content)=["']([^"']+)["']/gi;let m:RegExpExecArray|null;while((m=attr.exec(normalized))!==null){m[1].split(/\s*,\s*|\s+/).forEach(add)}const re=/(?:https?:)?\/\/[^\s"'<>\\]+/gi;while((m=re.exec(normalized))!==null){const raw=m[0].startsWith("//")?"https:"+m[0]:m[0];add(raw);if(out.length>=30)break}return out}
 function searchReader(markdown:string,url:string){const id=productId(url);const links:string[]=[];const lr=/https?:\/\/(?:www\.)?jumia\.com\.gh\/[^\s)<>"']+/gi;let lm:RegExpExecArray|null;while((lm=lr.exec(markdown))!==null){if(!id||lm[0].includes(id))links.push(lm[0])}const images=extractImages(markdown);const price=(markdown.match(/(?:GH₵|GHS|GHC|GH\s*₵|₵)\s*([0-9][0-9,\s]*(?:\.\d{1,2})?)/i)||[])[1];const heading=(markdown.match(/^#\s+(.+)$/m)||[])[1]||"";return {title:clean(heading),images,price:num(price),url:links[0]||url};}
 function fromReader(markdown:string,url:string){const title=(markdown.match(/^#\s+(.+)$/m)||markdown.match(/^(?:Title|Product name)\s*:\s*(.+)$/im)||[])[1]?.trim()||"";const images=extractImages(markdown);const priceMatch=markdown.match(/(?:GH₵|GHS|GHC|GH\s*₵|₵)\s*([0-9][0-9,\s]*(?:\.\d{1,2})?)/i)||markdown.match(/(?:price|sale price|current price)\s*[:\-]?\s*(?:GH₵|GHS|GHC|GH\s*₵|₵)?\s*([0-9][0-9,]*(?:\.\d{1,2})?)/i);const ratingMatch=markdown.match(/([0-5](?:\.\d)?)\s*(?:out of 5|\/5)/i);const reviewMatch=markdown.match(/([0-9][0-9,]*)\s*(?:ratings?|reviews?)/i);return {title:clean(title),images,price:num(priceMatch?.[1]),rating:num(ratingMatch?.[1]),reviewCount:Number(String(reviewMatch?.[1]||"0").replace(/,/g,""))||0,description:clean(markdown.replace(/^#.*$/m,"").split("\n\n").find(x=>x.trim())||""),url};}
 export async function POST(req:NextRequest){
@@ -26,6 +26,28 @@ export async function POST(req:NextRequest){
  if(!p||!p.name){
    const readerUrls=["https://r.jina.ai/"+normalizedUrl,"https://r.jina.ai/http://www.jumia.com.gh/"+normalizedUrl.split("/").slice(3).join("/")];
    for(const readerUrl of readerUrls){try{const reader=await fetch(readerUrl,{headers:{"Accept":"text/plain","User-Agent":"Myshop Jumia importer"},cache:"no-store"});if(reader.ok){const text=await reader.text();const candidate=fromReader(text,normalizedUrl);if(candidate.title||candidate.images.length||candidate.price!=null){fallback=candidate;break}}}catch{}}
+ }
+ if(!p||!p.name){
+   try{
+     const q=encodeURIComponent(titleFromUrl(normalizedUrl).replace(/-/g," "));
+     const catalogUrls=[
+       "https://www.jumia.com.gh/catalog/?q="+q,
+       "https://www.jumia.com.gh/search/?q="+q,
+       "https://r.jina.ai/https://www.jumia.com.gh/catalog/?q="+q
+     ];
+     for(const catalogUrl of catalogUrls){
+       const reader=await fetch(catalogUrl,{headers:{"Accept":"text/html,application/xhtml+xml,text/plain","User-Agent":"Mozilla/5.0 (compatible; Myshop/1.0)"},cache:"no-store"});
+       if(!reader.ok)continue;
+       const text=await reader.text();
+       const candidate=searchReader(text,normalizedUrl);
+       const target=(sourceId||"").toLowerCase();
+       const hasId=target && text.toLowerCase().includes(target);
+       const wanted=titleFromUrl(normalizedUrl).toLowerCase().replace(/-/g," ").replace(/\s+/g," ").trim();
+       const words=wanted.split(" ").filter(x=>x.length>3).slice(0,6);
+       const hasTitle=words.length>=2 && words.filter(x=>text.toLowerCase().includes(x)).length>=Math.min(3,words.length);
+       if((hasId||hasTitle)&&(candidate.images.length||candidate.price!=null)){fallback={...(fallback||{}),...candidate};break}
+     }
+   }catch{}
  }
  if(!p||!p.name){
    try{const catalogUrls=[
@@ -46,7 +68,7 @@ export async function POST(req:NextRequest){
  const offers=Array.isArray(p?.offers)?p.offers[0]:p?.offers;
  const structuredImages=imageValues(p?.image);
  const usableImages=structuredImages.concat([meta(html,"og:image"),meta(html,"twitter:image")]).concat(extractImages(html)).concat(fallback?.images||[]).filter(Boolean).map((x:any)=>String(x).trim()).filter((x)=>/^https?:\/\//i.test(x)&&/jumia/i.test(x)&&!/(?:favicon|logo|sprite|icon)/i.test(x)).filter((x,i,a)=>a.indexOf(x)===i);
- const priceCandidates=[offers?.price,offers?.lowPrice,offers?.highPrice,p?.price,p?.salePrice,p?.currentPrice,fallback?.price,meta(html,"product:price:amount"),meta(html,"og:price:amount")];
+ const priceCandidates=[offers?.price,offers?.lowPrice,offers?.highPrice,p?.price,p?.salePrice,p?.currentPrice,fallback?.price,meta(html,"product:price:amount"),meta(html,"og:price:amount"),meta(html,"price"),(html.match(/(?:GH₵|GHS|GHC|GH\s*₵|₵)\s*[0-9][0-9,\s]*(?:\.[0-9]{1,2})?/i)||[])[0]];
  const usablePrice=priceCandidates.map(num).find((x:any)=>x!=null&&x>0)??null;
  if(!title || !usableImages.length || usablePrice==null){
    const message=directStatus===403?"Jumia blocked the direct server request. The importer retried through a page reader but could not extract this product. Try opening the product in Jumia and paste the full share link again.":"Could not read product details from this Jumia page.";
