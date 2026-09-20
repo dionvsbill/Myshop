@@ -65,6 +65,58 @@ function extractCatalogProduct(html:string,sourceId:string){
   const image=clean(imageMatch?.[1]||"");
   return {title,price,images:isJumiaImage(image)?[image]:extractImages(window)};
 }
+function findJumiaData(v:any):any{
+  if(!v||typeof v!=="object")return null;
+  if(Array.isArray(v)){for(const x of v){const found=findJumiaData(x);if(found)return found}return null}
+  const hasProduct=typeof v.name==="string"&&(
+    v.price!==undefined||v.images!==undefined||v.image!==undefined||v.productId!==undefined||v.sku!==undefined
+  );
+  if(hasProduct)return v;
+  for(const x of Object.values(v)){const found=findJumiaData(x);if(found)return found}
+  return null;
+}
+function normalizeJumiaApiProduct(data:any,sourceId:string){
+  const p=findJumiaData(data);
+  if(!p)return null;
+  const priceValue=p.price?.current??p.price?.value??p.price?.amount??p.price;
+  const images=imageValues(p.images||p.image||p.media).filter(isJumiaImage);
+  return {
+    product:p,
+    title:clean(p.name||p.title),
+    price:num(priceValue),
+    images
+  };
+}
+async function productApiFallback(sourceId:string){
+  if(!sourceId)return null;
+  const endpoints=[
+    "https://www.jumia.com.gh/_ms/catalog/product/detail?productId="+encodeURIComponent(sourceId),
+    "https://www.jumia.com.gh/api/catalog/product/detail?productId="+encodeURIComponent(sourceId)
+  ];
+  for(const url of endpoints){
+    try{
+      const r=await fetch(url,{
+        headers:{
+          "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36",
+          "Accept":"application/json,text/plain,*/*",
+          "Accept-Language":"en-US,en;q=0.9",
+          "Referer":"https://www.jumia.com.gh/"
+        },
+        cache:"no-store"
+      });
+      if(!r.ok)continue;
+      const text=await r.text();
+      if(!text)continue;
+      try{
+        const data=JSON.parse(text);
+        const normalized=normalizeJumiaApiProduct(data,sourceId);
+        if(normalized)return normalized;
+      }catch{}
+    }catch{}
+  }
+  return null;
+}
+
 async function catalogFallback(normalized:string,sourceId:string){
   const q=searchQueryFromUrl(normalized);
   if(!q)return null;
@@ -173,6 +225,19 @@ export async function POST(req:NextRequest){
     if(candidate?.name||candidateTitle)product=product||candidate;
     fallback={...fallback,title:fallback.title||candidateTitle,images:[...(fallback.images||[]),...candidateImages],price:fallback.price??candidatePrice};
     if(product?.name&&candidateImages.length&&candidatePrice!=null)break;
+  }
+
+  if(!product?.name||!fallback.images?.length||fallback.price==null){
+    const apiProduct=sourceId?await productApiFallback(sourceId):null;
+    if(apiProduct){
+      product=product||apiProduct.product;
+      fallback={
+        ...fallback,
+        title:fallback.title||apiProduct.title,
+        images:[...(fallback.images||[]),...(apiProduct.images||[])],
+        price:fallback.price??apiProduct.price
+      };
+    }
   }
 
   if(!product?.name||!fallback.images?.length||fallback.price==null){
