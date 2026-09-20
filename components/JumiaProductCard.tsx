@@ -13,7 +13,7 @@ export default function JumiaProductCard({product}:{product:JumiaCardItem}){
    <a href={product.source_url} target="_blank" rel="noreferrer" className={styles.title}>{product.title}</a>
    <div className={styles.price}>{product.price!=null?"GHS "+Number(product.price).toFixed(2):"Price on Jumia"}</div>
    {product.rating!=null&&<div className={styles.meta}><span className={styles.rating}><Star size={12} fill="currentColor"/>{Number(product.rating).toFixed(1)}</span><span>({product.review_count||0})</span></div>}
-   <a href={product.jforce_url||"https://jforce.jumia.com.gh/s/iHaN1Ck"} target="_blank" rel="noreferrer" className={styles.actions}><span>Shop through JForce</span><ExternalLink size={15}/></a>
+   <a href={product.jforce_url||product.source_url} target="_blank" rel="noreferrer" className={styles.actions}><span>View on Jumia</span><ExternalLink size={15}/></a>
   </div>
  </article>
 }
