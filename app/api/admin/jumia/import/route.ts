@@ -124,7 +124,7 @@ export async function POST(req:NextRequest){
   let product:any=null;
   let fallback:any={};
 
-  const sources=[
+  const sources: Array<{url:string;headers:Record<string,string>}>=[
     {url:normalized,headers:{"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36","Accept":"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8","Accept-Language":"en-US,en;q=0.9","Referer":"https://www.google.com/"}},
     {url:"https://r.jina.ai/"+normalized,headers:{"User-Agent":"Mozilla/5.0","Accept":"text/plain"}},
     {url:"https://www-jumia-com-gh.translate.goog/"+normalized.split("/").slice(3).join("/")+"?_x_tr_sl=auto&_x_tr_tl=en&_x_tr_hl=en",headers:{"User-Agent":"Mozilla/5.0","Accept":"text/html,application/xhtml+xml,*/*;q=0.8"}}
