@@ -117,6 +117,28 @@ async function productApiFallback(sourceId:string){
   return null;
 }
 
+async function microlinkFetch(url:string){
+  try{
+    const api="https://api.microlink.io/?url="+encodeURIComponent(url)+"&meta=true&markdown=true";
+    const r=await fetch(api,{headers:{"Accept":"application/json","User-Agent":"Myshop Jumia importer"},cache:"no-store"});
+    if(!r.ok)return null;
+    const json=await r.json();
+    if(json?.status!=="success")return null;
+    const d=json.data||{};
+    const image=typeof d.image==="string"?d.image:d.image?.url;
+    const markdown=typeof d.markdown==="string"?d.markdown:"";
+    const price=extractPrice(markdown+"\n"+(d.description||"")+"\n"+(d.title||""));
+    const images=[];
+    if(image)images.push(image);
+    images.push(...extractImages(markdown));
+    return {
+      title:clean(d.title||""),
+      price,
+      images:images.filter(isJumiaImage)
+    };
+  }catch{return null}
+}
+
 async function jinaFetch(url:string){
   const headers={
     "Accept":"text/plain,text/markdown,*/*",
@@ -266,6 +288,19 @@ export async function POST(req:NextRequest){
   }
 
   if(!product?.name||!fallback.images?.length||fallback.price==null){
+    const browser=await microlinkFetch(normalized);
+    if(browser){
+      fallback={
+        ...fallback,
+        title:fallback.title||browser.title,
+        images:[...(fallback.images||[]),...(browser.images||[])],
+        price:fallback.price??browser.price
+      };
+      if(!product?.name&&browser.title)product={name:browser.title};
+    }
+  }
+
+  if(!product?.name||!fallback.images?.length||fallback.price==null){
     const apiProduct=sourceId?await productApiFallback(sourceId):null;
     if(apiProduct){
       product=product||apiProduct.product;
@@ -293,7 +328,7 @@ export async function POST(req:NextRequest){
     }
   }
 
-  const rawTitle=clean(product?.name||fallback.title||meta(html,"og:title")||meta(html,"twitter:title"));
+  const rawTitle=clean(product?.name||fallback.title||meta(html,"og:title")||meta(html,"twitter:title")||titleFromUrl(normalized));
   const title=/^(search results|search|jumia)$/i.test(rawTitle)?"":rawTitle;
   const offers=Array.isArray(product?.offers)?product.offers[0]:product?.offers;
   const images=imageValues(product?.image).concat(fallback.images||[],meta(html,"og:image"),meta(html,"twitter:image"),extractImages(html))
