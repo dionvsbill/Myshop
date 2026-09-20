@@ -53,10 +53,13 @@ function extractCatalogProduct(html:string,sourceId:string){
   if(!match)return null;
   const pos=match.index;
   const window=html.slice(Math.max(0,pos-5000),Math.min(html.length,pos+12000));
-  const title=(window.match(/(?:aria-label|title)=[\"']([^\"']+)[\"']/i)||window.match(/<h[1-6][^>]*>([\\s\\S]*?)<\\/h[1-6]>/i)||[])[1]||"";
-  const price=(window.match(/(?:GH₵|GHS|GHC|GH\\s*₵|₵)\\s*[0-9][0-9,\\s]*(?:\\.[0-9]{1,2})?/i)||[])[0]||"";
-  const image=(window.match(/(?:src|data-src|data-image|data-original)=[\"']([^\"']+)[\"']/i)||[])[1]||"";
-  return {title:clean(title.replace(/<[^>]+>/g," ")),price:num(price),images:isJumiaImage(image)?[clean(image)]:extractImages(window)};
+  const titleMatch=window.match(/(?:aria-label|title)=[\"']([^\"']+)[\"']/i)||window.match(/<h[1-6][^>]*>([\\s\\S]*?)<\\/h[1-6]>/i);
+  const priceMatch=window.match(/(?:GH₵|GHS|GHC|GH\\s*₵|₵)\\s*[0-9][0-9,\\s]*(?:\\.[0-9]{1,2})?/i);
+  const imageMatch=window.match(/(?:src|data-src|data-image|data-original)=[\"']([^\"']+)[\"']/i);
+  const title=clean(titleMatch?.[1]||"").replace(/<[^>]+>/g," ");
+  const price=num(priceMatch?.[0]);
+  const image=clean(imageMatch?.[1]||"");
+  return {title,price,images:isJumiaImage(image)?[image]:extractImages(window)};
 }
 async function catalogFallback(normalized:string,sourceId:string){
   const q=searchQueryFromUrl(normalized);
