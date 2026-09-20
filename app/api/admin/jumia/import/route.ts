@@ -211,7 +211,7 @@ function extractPrice(html:string){
   return null;
 }
 function readerData(text:string,url:string){
-  const title=(text.match(/^#\s+(.+)$/m)||text.match(/^(?:Title|Product name)\s*:\s*(.+)$/im)||[])[1]||"";
+  const title=(text.match(/^#\s+(.+)$/m)||text.match(/^(?:Title|Product name)\s*:\s*(.+)$/im)||text.match(/^\s*\*\*([^*]+)\*\*\s*$/m)||[])[1]||"";
   const price=extractPrice(text);
   return {title:clean(title),price,images:extractImages(text),url};
 }
