@@ -159,7 +159,7 @@ async function jinaReader(url:string){
 async function microlinkFetch(url:string){
   try{
     const api="https://api.microlink.io/?url="+encodeURIComponent(url)
-      +"&meta=true&prerender=true&data.html.selector=html&data.html.attr=outerHTML";
+      +"&meta=true&prerender=true&waitForTimeout=4000&data.html.attr=html";
     const r=await fetch(api,{headers:{"Accept":"application/json","User-Agent":"Mozilla/5.0 Myshop Jumia importer"},cache:"no-store"});
     if(!r.ok)return null;
     const j=await r.json();
