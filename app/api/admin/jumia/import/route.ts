@@ -121,7 +121,10 @@ async function catalogFallback(normalized:string,sourceId:string){
   const q=searchQueryFromUrl(normalized);
   if(!q)return null;
   const url="https://www.jumia.com.gh/catalog/?q="+encodeURIComponent(q);
-  const r=await fetchText(url,{"User-Agent":"Mozilla/5.0","Accept":"text/html,application/xhtml+xml,*/*;q=0.8","Accept-Language":"en-US,en;q=0.9"});
+  let r=await fetchText(url,{"User-Agent":"Mozilla/5.0","Accept":"text/html,application/xhtml+xml,*/*;q=0.8","Accept-Language":"en-US,en;q=0.9"});
+  if(!r.text){
+    r=await fetchText("https://r.jina.ai/"+url,{"User-Agent":"Myshop Jumia importer","Accept":"text/plain"});
+  }
   if(!r.text)return null;
   return extractCatalogProduct(r.text,sourceId);
 }
@@ -138,7 +141,7 @@ function imageValues(v:any):string[]{
 }
 function isJumiaImage(v:string){
   const x=clean(v).replace(/\\/g,"").replace(/\\\//g,"/");
-  return /^https?:\/\//i.test(x)&&/^(?:[^/]+\.)?jumia\.(?:is|com\.gh)\//i.test(x)&&
+  return /^https?:\/\//i.test(x)&&/^(?:[^/]+\.)?(?:jumia\.(?:is|com\.gh)|static\.jumia\.com\.gh)\//i.test(x)&&
     !/(?:favicon|logo|sprite|icon|placeholder)/i.test(x);
 }
 function extractImages(source:string){
