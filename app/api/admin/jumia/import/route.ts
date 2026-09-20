@@ -43,6 +43,29 @@ function num(v:any){
   return Number.isFinite(n)&&n>0?n:null;
 }
 function productId(url:string){return (url.match(/-(\d+)\.html(?:$|[?#])/i)||[])[1]||null}
+function searchQueryFromUrl(url:string){
+  const m=url.match(/jumia\\.com\\.gh\\/([^/?#]+?)-\\d+\\.html/i);
+  return m?decodeURIComponent(m[1].replace(/[-_]+/g," ").replace(/%20/g," ")).trim():"";
+}
+function extractCatalogProduct(html:string,sourceId:string){
+  const needle=new RegExp("(?:https?:\\\\/\\\\/www\\\\.jumia\\\\.com\\\\.gh)?[^\\\"'<>\\s]*-"+sourceId+"\\\\.html(?:[?#][^\\\"'<>\\s]*)?","i");
+  const match=needle.exec(html);
+  if(!match)return null;
+  const pos=match.index;
+  const window=html.slice(Math.max(0,pos-5000),Math.min(html.length,pos+12000));
+  const title=(window.match(/(?:aria-label|title)=\"([^\"]+)\"/i)||window.match(/<h[1-6][^>]*>([\\s\\S]*?)<\\/h[1-6]>/i)||[])[1]||"";
+  const price=(window.match(/(?:GH₵|GHS|GHC|GH\\s*₵|₵)\\s*[0-9][0-9,\\s]*(?:\\.[0-9]{1,2})?/i)||[])[0]||"";
+  const image=(window.match(/(?:src|data-src|data-image|data-original)=\"([^\"]+)\"/i)||[])[1]||"";
+  return {title:clean(title.replace(/<[^>]+>/g," ")),price:num(price),images:isJumiaImage(image)?[clean(image)]:extractImages(window)};
+}
+async function catalogFallback(normalized:string,sourceId:string){
+  const q=searchQueryFromUrl(normalized);
+  if(!q)return null;
+  const url="https://www.jumia.com.gh/catalog/?q="+encodeURIComponent(q);
+  const r=await fetchText(url,{"User-Agent":"Mozilla/5.0","Accept":"text/html,application/xhtml+xml,*/*;q=0.8","Accept-Language":"en-US,en;q=0.9"});
+  if(!r.text)return null;
+  return extractCatalogProduct(r.text,sourceId);
+}
 function titleFromUrl(url:string){
   const m=url.match(/jumia\.com\.gh\/([^/?#]+?)-(\d+)\.html/i);
   return m?clean(m[1].replace(/[-_]+/g," ").replace(/\b\w/g,(x:string)=>x.toUpperCase())):"";
@@ -143,6 +166,13 @@ export async function POST(req:NextRequest){
     if(candidate?.name||candidateTitle)product=product||candidate;
     fallback={...fallback,title:fallback.title||candidateTitle,images:[...(fallback.images||[]),...candidateImages],price:fallback.price??candidatePrice};
     if(product?.name&&candidateImages.length&&candidatePrice!=null)break;
+  }
+
+  if(!product?.name||!fallback.images?.length||fallback.price==null){
+    const catalog=await catalogFallback(normalized,sourceId);
+    if(catalog){
+      fallback={...fallback,title:fallback.title||catalog.title,images:[...(fallback.images||[]),...(catalog.images||[])],price:fallback.price??catalog.price};
+    }
   }
 
   if(!product?.name||!fallback.images?.length||fallback.price==null){
