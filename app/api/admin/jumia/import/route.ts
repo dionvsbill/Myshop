@@ -42,6 +42,7 @@ export async function POST(req:NextRequest){
  }
  const rawTitle=clean(p?.name||meta(html,"og:title")||meta(html,"twitter:title")||fallback?.title||titleFromUrl(normalizedUrl)||"");
  const title=/^(search results|search|jumia)$/i.test(rawTitle)||/^search results\s*[-|]/i.test(rawTitle) ? "" : rawTitle;
+ const offers=Array.isArray(p?.offers)?p.offers[0]:p?.offers;
  const usableImages=arr(p?.image).concat([meta(html,"og:image"),meta(html,"twitter:image")]).concat(extractImages(html)).concat(fallback?.images||[]).filter(Boolean).map((x:any)=>String(x).trim()).filter((x,i,a)=>a.indexOf(x)===i);
  const usablePrice=num(offers?.price)??fallback?.price??null;
  if(!title || (!usableImages.length && usablePrice===1)){
@@ -49,8 +50,7 @@ export async function POST(req:NextRequest){
    return NextResponse.json({error:message},{status:422});
  }
  const canonical=clean(p?.url||meta(html,"og:url")||fallback?.url||normalizedUrl.split("?")[0]);const id=productId(canonical);
- const rawImages=usableImages;
- const offers=Array.isArray(p?.offers)?p.offers[0]:p?.offers;const rating=p?.aggregateRating;
+ const rawImages=usableImages;const rating=p?.aggregateRating;
  const features=arr(p?.additionalProperty).map((x:any)=>({name:x?.name||"",value:x?.value||""})).filter((x:any)=>x.name||x.value);const specifications:Record<string,string>={};for(const x of features)if(x.name)specifications[x.name]=String(x.value);
  const payload={jumia_product_id:id||sourceId,source_url:canonical,title,slug:slugify(title)+"-"+(id||sourceId||Date.now()),description:clean(p?.description||meta(html,"description")||fallback?.description||""),brand:typeof p?.brand==="object"?p.brand?.name:p?.brand||null,sku:p?.sku||null,price:usablePrice,compare_price:null,currency:offers?.priceCurrency||"GHS",discount_percent:null,rating:num(rating?.ratingValue)??fallback?.rating??null,review_count:Number(rating?.reviewCount||rating?.ratingCount||fallback?.reviewCount||0)||0,stock_status:offers?.availability||null,images:rawImages,features,specifications,seller:typeof offers?.seller==="object"?offers.seller?.name:offers?.seller||null,category:typeof p?.category==="string"?p.category:null,jforce_url:"https://jforce.jumia.com.gh/s/iHaN1Ck",is_active:true,last_synced_at:new Date().toISOString()};
  const existing=await s.from("jumia_products").select("id").eq("source_url",canonical).maybeSingle();const q=existing.data?await s.from("jumia_products").update(payload).eq("id",existing.data.id).select("*").single():await s.from("jumia_products").insert(payload).select("*").single();
