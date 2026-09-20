@@ -67,7 +67,7 @@ export async function POST(req:NextRequest){
  const title=/^(search results|search|jumia)$/i.test(rawTitle)||/^search results\s*[-|]/i.test(rawTitle) ? "" : rawTitle;
  const offers=Array.isArray(p?.offers)?p.offers[0]:p?.offers;
  const structuredImages=imageValues(p?.image);
- const usableImages=structuredImages.concat([meta(html,"og:image"),meta(html,"twitter:image")]).concat(extractImages(html)).concat(fallback?.images||[]).filter(Boolean).map((x:any)=>String(x).trim()).filter((x)=>/^https?:\/\//i.test(x)&&/jumia/i.test(x)&&!/(?:favicon|logo|sprite|icon)/i.test(x)).filter((x,i,a)=>a.indexOf(x)===i);
+ const usableImages=structuredImages.concat([meta(html,"og:image"),meta(html,"twitter:image")]).concat(extractImages(html)).concat(fallback?.images||[]).filter(Boolean).map((x:any)=>String(x).trim().replace(/\\\//g,"/").replace(/\\/g,"").replace(/&amp;/g,"&")).filter((x)=>/^https?:\/\//i.test(x)&&/^(?:https?:\/\/)?(?:[^/]+\.)?jumia\.(?:is|com\.gh)\//i.test(x)&&/(?:jpg|jpeg|png|webp|unsafe\/fit-in|product\/)/i.test(x)&&!/(?:favicon|logo|sprite|icon)/i.test(x)).filter((x,i,a)=>a.indexOf(x)===i);
  const priceCandidates=[offers?.price,offers?.lowPrice,offers?.highPrice,p?.price,p?.salePrice,p?.currentPrice,fallback?.price,meta(html,"product:price:amount"),meta(html,"og:price:amount"),meta(html,"price"),(html.match(/(?:GH₵|GHS|GHC|GH\s*₵|₵)\s*[0-9][0-9,\s]*(?:\.[0-9]{1,2})?/i)||[])[0]];
  const usablePrice=priceCandidates.map(num).find((x:any)=>x!=null&&x>0)??null;
  if(!title || !usableImages.length || usablePrice==null){
