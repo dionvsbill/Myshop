@@ -36,10 +36,15 @@ function findProduct(v:any):any{
 function arr(v:any){return Array.isArray(v)?v:[v].filter(Boolean)}
 function num(v:any){
   if(v===null||v===undefined)return null;
-  const s=String(v).replace(/&nbsp;/gi," ").replace(/GH₵|GHS|GHC|GH\s*₵|₵/gi,"").replace(/,/g,"").trim();
-  const m=s.match(/\d+(?:\.\d{1,2})?/);
-  if(!m)return null;
-  const n=Number(m[0]);
+  let s=String(v).replace(/&nbsp;/gi," ").replace(/GH₵|GHS|GHC|GH\s*₵|₵/gi,"").trim();
+  s=s.replace(/[^0-9.,\s-]/g,"").trim();
+  const match=s.match(/-?\d[\d,\s]*(?:\.\d{1,2})?/);
+  if(!match)return null;
+  let raw=match[0].trim();
+  const hasDecimal=/\.\d{1,2}$/.test(raw);
+  if(hasDecimal)raw=raw.replace(/,/g,"").replace(/\s+/g,"");
+  else raw=raw.replace(/[\s,]/g,"");
+  const n=Number(raw);
   return Number.isFinite(n)&&n>0?n:null;
 }
 function productId(url:string){return (url.match(/-(\d+)\.html(?:$|[?#])/i)||[])[1]||null}
@@ -127,12 +132,13 @@ async function microlinkFetch(url:string){
     const d=json.data||{};
     const image=typeof d.image==="string"?d.image:d.image?.url;
     const markdown=typeof d.markdown==="string"?d.markdown:"";
+    const renderedHtml=typeof d.html==="string"?d.html:"";
     const price=extractPrice(markdown+"\n"+(d.description||"")+"\n"+(d.title||""));
     const images=[];
     if(image)images.push(image);
-    images.push(...extractImages(markdown));
+    images.push(...extractImages(markdown),...extractImages(renderedHtml));
     return {
-      title:clean(d.title||""),
+      title:clean(d.title||meta(renderedHtml,"og:title")||""),
       price,
       images:images.filter(isJumiaImage)
     };
