@@ -21,10 +21,16 @@ export async function POST(req:NextRequest){
  const normalizedUrl=url.replace(/^http:\/\//i,"https://").replace(/^https:\/\/(?!www\.)jumia\.com\.gh\//i,"https://www.jumia.com.gh/");
  if(!/^https:\/\/www\.jumia\.com\.gh\//i.test(normalizedUrl))return NextResponse.json({error:"Paste a Jumia Ghana product URL."},{status:400});
  let html="";let directStatus=200;
- try{const res=await fetch(normalizedUrl,{headers:{"User-Agent":"Mozilla/5.0 (compatible; Myshop/1.0)","Accept":"text/html,application/xhtml+xml"},cache:"no-store"});directStatus=res.status;if(res.ok)html=await res.text()}catch{}
+ const pageSources=[
+   {url:normalizedUrl,headers:{"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36","Accept":"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8","Accept-Language":"en-US,en;q=0.9","Referer":"https://www.google.com/" }},
+   {url:"https://r.jina.ai/"+normalizedUrl,headers:{"User-Agent":"Mozilla/5.0","Accept":"text/plain"}},
+   {url:"https://api.allorigins.win/raw?url="+encodeURIComponent(normalizedUrl),headers:{"User-Agent":"Mozilla/5.0","Accept":"text/html,application/xhtml+xml,*/*;q=0.8"}},
+   {url:"https://corsproxy.io/?url="+encodeURIComponent(normalizedUrl),headers:{"User-Agent":"Mozilla/5.0","Accept":"text/html,application/xhtml+xml,*/*;q=0.8"}}
+ ];
+ for(const source of pageSources){try{const res=await fetch(source.url,{headers:source.headers,cache:"no-store"});if(source.url===normalizedUrl)directStatus=res.status;if(res.ok){const body=await res.text();if(body.length>500){html=body;const candidate=findProduct(scripts(body));if(candidate?.name||meta(body,"og:title")||extractImages(body).length||(body.match(/(?:GH₵|GHS|GHC|GH\\s*₵|₵)\\s*[0-9][0-9,\\s]*(?:\\.[0-9]{1,2})?/i)))break}}}catch{}}
  let p:any=findProduct(scripts(html));let fallback:any=null;const sourceId=productId(normalizedUrl);
  if(!p||!p.name){
-   const readerUrls=["https://r.jina.ai/"+normalizedUrl,"https://r.jina.ai/http://www.jumia.com.gh/"+normalizedUrl.split("/").slice(3).join("/")];
+   const readerUrls=["https://r.jina.ai/"+normalizedUrl,"https://r.jina.ai/http://www.jumia.com.gh/"+normalizedUrl.split("/").slice(3).join("/"),"https://api.allorigins.win/raw?url="+encodeURIComponent(normalizedUrl),"https://corsproxy.io/?url="+encodeURIComponent(normalizedUrl)];
    for(const readerUrl of readerUrls){try{const reader=await fetch(readerUrl,{headers:{"Accept":"text/plain","User-Agent":"Myshop Jumia importer"},cache:"no-store"});if(reader.ok){const text=await reader.text();const candidate=fromReader(text,normalizedUrl);if(candidate.title||candidate.images.length||candidate.price!=null){fallback=candidate;break}}}catch{}}
  }
  if(!p||!p.name){
