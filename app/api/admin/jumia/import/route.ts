@@ -40,16 +40,19 @@ export async function POST(req:NextRequest){
  if(!p||!p.name){
    try{const translated="https://www-jumia-com-gh.translate.goog/"+normalizedUrl.split("/").slice(3).join("/")+"?_x_tr_sl=auto&_x_tr_tl=en&_x_tr_hl=en";const res=await fetch(translated,{headers:{"User-Agent":"Mozilla/5.0","Accept":"text/html,application/xhtml+xml"},cache:"no-store"});if(res.ok){const translatedHtml=await res.text();p=findProduct(scripts(translatedHtml));if(!p||!p.name){const candidate=fromReader(translatedHtml,normalizedUrl);if(candidate.title||candidate.images.length||candidate.price!=null)fallback={...(fallback||{}),...candidate}}if(!html)html=translatedHtml}}catch{}
  }
- const title=clean(p?.name||meta(html,"og:title")||meta(html,"twitter:title")||fallback?.title||titleFromUrl(normalizedUrl)||"");
- if(!title){
+ const rawTitle=clean(p?.name||meta(html,"og:title")||meta(html,"twitter:title")||fallback?.title||titleFromUrl(normalizedUrl)||"");
+ const title=/^(search results|search|jumia)$/i.test(rawTitle)||/^search results\s*[-|]/i.test(rawTitle) ? "" : rawTitle;
+ const usableImages=arr(p?.image).concat([meta(html,"og:image"),meta(html,"twitter:image")]).concat(extractImages(html)).concat(fallback?.images||[]).filter(Boolean).map((x:any)=>String(x).trim()).filter((x,i,a)=>a.indexOf(x)===i);
+ const usablePrice=num(offers?.price)??fallback?.price??null;
+ if(!title || (!usableImages.length && usablePrice===1)){
    const message=directStatus===403?"Jumia blocked the direct server request. The importer retried through a page reader but could not extract this product. Try opening the product in Jumia and paste the full share link again.":"Could not read product details from this Jumia page.";
    return NextResponse.json({error:message},{status:422});
  }
  const canonical=clean(p?.url||meta(html,"og:url")||fallback?.url||normalizedUrl.split("?")[0]);const id=productId(canonical);
- const rawImages=arr(p?.image).concat([meta(html,"og:image"),meta(html,"twitter:image")]).concat(extractImages(html)).concat(fallback?.images||[]).filter(Boolean).map((x:any)=>String(x).trim()).filter((x,i,a)=>a.indexOf(x)===i);
+ const rawImages=usableImages;
  const offers=Array.isArray(p?.offers)?p.offers[0]:p?.offers;const rating=p?.aggregateRating;
  const features=arr(p?.additionalProperty).map((x:any)=>({name:x?.name||"",value:x?.value||""})).filter((x:any)=>x.name||x.value);const specifications:Record<string,string>={};for(const x of features)if(x.name)specifications[x.name]=String(x.value);
- const payload={jumia_product_id:id||sourceId,source_url:canonical,title,slug:slugify(title)+"-"+(id||sourceId||Date.now()),description:clean(p?.description||meta(html,"description")||fallback?.description||""),brand:typeof p?.brand==="object"?p.brand?.name:p?.brand||null,sku:p?.sku||null,price:num(offers?.price)??fallback?.price??null,compare_price:null,currency:offers?.priceCurrency||"GHS",discount_percent:null,rating:num(rating?.ratingValue)??fallback?.rating??null,review_count:Number(rating?.reviewCount||rating?.ratingCount||fallback?.reviewCount||0)||0,stock_status:offers?.availability||null,images:rawImages,features,specifications,seller:typeof offers?.seller==="object"?offers.seller?.name:offers?.seller||null,category:typeof p?.category==="string"?p.category:null,jforce_url:"https://jforce.jumia.com.gh/s/iHaN1Ck",is_active:true,last_synced_at:new Date().toISOString()};
+ const payload={jumia_product_id:id||sourceId,source_url:canonical,title,slug:slugify(title)+"-"+(id||sourceId||Date.now()),description:clean(p?.description||meta(html,"description")||fallback?.description||""),brand:typeof p?.brand==="object"?p.brand?.name:p?.brand||null,sku:p?.sku||null,price:usablePrice,compare_price:null,currency:offers?.priceCurrency||"GHS",discount_percent:null,rating:num(rating?.ratingValue)??fallback?.rating??null,review_count:Number(rating?.reviewCount||rating?.ratingCount||fallback?.reviewCount||0)||0,stock_status:offers?.availability||null,images:rawImages,features,specifications,seller:typeof offers?.seller==="object"?offers.seller?.name:offers?.seller||null,category:typeof p?.category==="string"?p.category:null,jforce_url:"https://jforce.jumia.com.gh/s/iHaN1Ck",is_active:true,last_synced_at:new Date().toISOString()};
  const existing=await s.from("jumia_products").select("id").eq("source_url",canonical).maybeSingle();const q=existing.data?await s.from("jumia_products").update(payload).eq("id",existing.data.id).select("*").single():await s.from("jumia_products").insert(payload).select("*").single();
  if(q.error)return NextResponse.json({error:q.error.message},{status:400});return NextResponse.json({product:q.data,source:"url-fallback"});
 }
