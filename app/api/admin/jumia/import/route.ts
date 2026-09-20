@@ -146,12 +146,7 @@ async function fetchText(url:string,headers:Record<string,string>={}){
 async function jinaReader(url:string){
   return fetchText("https://r.jina.ai/"+url,{
     "Accept":"text/plain,text/markdown,*/*",
-    "User-Agent":"Mozilla/5.0",
-    "X-Engine":"browser",
-    "X-Proxy":"gh",
-    "X-No-Cache":"true",
-    "X-Timeout":"30",
-    "X-User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36"
+    "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36"
   });
 }
 
@@ -159,7 +154,7 @@ async function jinaReader(url:string){
 async function microlinkFetch(url:string){
   try{
     const api="https://api.microlink.io/?url="+encodeURIComponent(url)
-      +"&meta=true&prerender=true&waitForTimeout=4000&data.html.attr=html";
+      +"\u0026meta=true\u0026markdown=true\u0026prerender=true\u0026waitForTimeout=4000\u0026data.html.attr=html";
     const r=await fetch(api,{headers:{"Accept":"application/json","User-Agent":"Mozilla/5.0 Myshop Jumia importer"},cache:"no-store"});
     if(!r.ok)return null;
     const j=await r.json();
@@ -188,11 +183,7 @@ async function microlinkFetch(url:string){
 async function jinaSearch(q:string){
   return fetchText("https://s.jina.ai/?q="+encodeURIComponent(q),{
     "Accept":"text/plain,text/markdown,*/*",
-    "User-Agent":"Mozilla/5.0",
-    "X-Engine":"browser",
-    "X-Proxy":"gh",
-    "X-No-Cache":"true",
-    "X-Timeout":"30"
+    "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36"
   });
 }
 
