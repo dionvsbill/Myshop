@@ -176,7 +176,7 @@ export async function POST(req:NextRequest){
   }
 
   if(!product?.name||!fallback.images?.length||fallback.price==null){
-    const catalog=await catalogFallback(normalized,sourceId);
+    const catalog=sourceId?await catalogFallback(normalized,sourceId):null;
     if(catalog){
       fallback={...fallback,title:fallback.title||catalog.title,images:[...(fallback.images||[]),...(catalog.images||[])],price:fallback.price??catalog.price};
     }
