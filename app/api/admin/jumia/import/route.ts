@@ -1,199 +1,71 @@
 import {NextRequest,NextResponse} from "next/server";
 import {createClient} from "../../../../../lib/supabase/server";
 
-function clean(v:any){return String(v??"").replace(/&amp;/g,"&").replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/\\\//g,"/").trim()}
+function clean(v:any){
+  return String(v??"")
+    .replace(/&amp;/g,"&").replace(/&quot;/g,'"').replace(/&#39;/g,"'")
+    .replace(/&lt;/g,"<").replace(/&gt;/g,">")
+    .replace(/\\\//g,"/").trim();
+}
+
 function meta(html:string,name:string){
-  const escaped=name.replace(/[.*+?^$\\{\\}()|[\\]\\\\]/g,"\\\\$&");
   const patterns=[
-    new RegExp(`<meta[^>]+(?:property|name)=["']${escaped}["'][^>]+content=["']([^"']+)["']`,"i"),
-    new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${escaped}["']`,"i")
+    new RegExp("<meta[^>]+(?:property|name)=[\\\"']"+name+"[\\\"'][^>]+content=[\\\"']([^\\\"']+)[\\\"']","i"),
+    new RegExp("<meta[^>]+content=[\\\"']([^\\\"']+)[\\\"'][^>]+(?:property|name)=[\\\"']"+name+"[\\\"']","i")
   ];
-  for(const pattern of patterns){const match=pattern.exec(html);if(match)return clean(match[1])}
+  for(const p of patterns){const m=p.exec(html);if(m)return clean(m[1]);}
   return "";
 }
-function jsonScripts(html:string){
+
+function jsonLd(html:string){
   const out:any[]=[];
-  const re=/<script\b[^>]*?(?:type=["'](?:application\/ld\+json|application\/json)["'])?[^>]*>([\s\S]*?)<\/script>/gi;
+  const re=/<script\\b[^>]*type=[\\\"']application\\/ld\\+json[\\\"'][^>]*>([\\s\\S]*?)<\\/script>/gi;
   let m:RegExpExecArray|null;
   while((m=re.exec(html))!==null){
-    const raw=m[1].trim();
-    if(!raw||raw.length>1000000)continue;
-    try{out.push(JSON.parse(raw))}catch{
-      try{out.push(JSON.parse(raw.replace(/<!--|-->/g,"").trim()))}catch{}
+    try{out.push(JSON.parse(m[1].trim()));}catch{
+      try{out.push(JSON.parse(m[1].replace(/<!--|-->/g,"").trim()));}catch{}
     }
   }
   return out;
 }
+
 function findProduct(v:any):any{
   if(!v)return null;
-  if(Array.isArray(v)){for(const x of v){const p=findProduct(x);if(p)return p}return null}
+  if(Array.isArray(v)){for(const x of v){const p=findProduct(x);if(p)return p;}return null;}
   if(typeof v!=="object")return null;
   const t=v["@type"];
   if(t==="Product"||(Array.isArray(t)&&t.some((x:any)=>String(x).toLowerCase()==="product")))return v;
-  for(const x of Object.values(v)){const p=findProduct(x);if(p)return p}
+  for(const x of Object.values(v)){const p=findProduct(x);if(p)return p;}
   return null;
 }
-function arr(v:any){return Array.isArray(v)?v:[v].filter(Boolean)}
+
+function arr(v:any){return Array.isArray(v)?v:[v].filter(Boolean);}
+
 function num(v:any){
   if(v===null||v===undefined)return null;
-  let s=String(v).replace(/&nbsp;/gi," ").replace(/GH₵|GHS|GHC|GH\s*₵|₵/gi,"").trim();
-  s=s.replace(/[^0-9.,\s-]/g,"").trim();
-  const match=s.match(/-?\d[\d,\s]*(?:\.\d{1,2})?/);
-  if(!match)return null;
-  let raw=match[0].trim();
-  const hasDecimal=/\.\d{1,2}$/.test(raw);
-  if(hasDecimal)raw=raw.replace(/,/g,"").replace(/\s+/g,"");
-  else raw=raw.replace(/[\s,]/g,"");
+  let s=String(v).replace(/&nbsp;/gi," ").replace(/GH₵|GHS|GHC|GH\\s*₵|₵/gi,"").trim();
+  s=s.replace(/[^0-9.,\\s-]/g,"").trim();
+  const m=s.match(/-?\\d[\\d,\\s]*(?:\\.\\d{1,2})?/);
+  if(!m)return null;
+  let raw=m[0].trim();
+  raw=raw.includes(".")?raw.replace(/,/g,"").replace(/\\s+/g,""):raw.replace(/[\\s,]/g,"");
   const n=Number(raw);
   return Number.isFinite(n)&&n>0?n:null;
 }
-function productId(url:string){return (url.match(/-(\d+)\.html(?:$|[?#])/i)||[])[1]||null}
-function searchQueryFromUrl(url:string){
-  const m=url.match(/jumia\.com\.gh\/([^/?#]+?)-\d+\.html/i);
-  return m?m[1].replace(/[-_]+/g," ").trim():"";
-}
-function extractCatalogProduct(html:string,sourceId:string){
-  const needle=new RegExp("(?:https?:\\/\\/www\\.jumia\\.com\\.gh)?[^\\\"'<>\\s]*-"+sourceId+"\\.html(?:[?#][^\\\"'<>\\s]*)?","i");
-  const match=needle.exec(html);
-  if(!match)return null;
-  const pos=match.index;
-  const window=html.slice(Math.max(0,pos-5000),Math.min(html.length,pos+12000));
-  const titleAttr=new RegExp("(?:aria-label|title)=[\\\"']([^\\\"']+)[\\\"']","i");
-  const titleHeading=new RegExp("<h[1-6][^>]*>([\\s\\S]*?)</h[1-6]>","i");
-  const pricePattern=new RegExp("(?:GH₵|GHS|GHC|GH\\s*₵|₵)\\s*[0-9][0-9,\\s]*(?:\\.[0-9]{1,2})?","i");
-  const imageAttr=new RegExp("(?:src|data-src|data-image|data-original)=[\\\"']([^\\\"']+)[\\\"']","i");
-  const titleMatch=titleAttr.exec(window)||titleHeading.exec(window);
-  const priceMatch=pricePattern.exec(window);
-  const imageMatch=imageAttr.exec(window);
-  const title=clean(titleMatch?.[1]||"").replace(/<[^>]+>/g," ");
-  const price=num(priceMatch?.[0]);
-  const image=clean(imageMatch?.[1]||"");
-  return {title,price,images:isJumiaImage(image)?[image]:extractImages(window)};
-}
-function findJumiaData(v:any):any{
-  if(!v||typeof v!=="object")return null;
-  if(Array.isArray(v)){for(const x of v){const found=findJumiaData(x);if(found)return found}return null}
-  const hasProduct=typeof v.name==="string"&&(
-    v.price!==undefined||v.images!==undefined||v.image!==undefined||v.productId!==undefined||v.sku!==undefined
-  );
-  if(hasProduct)return v;
-  for(const x of Object.values(v)){const found=findJumiaData(x);if(found)return found}
-  return null;
-}
-function normalizeJumiaApiProduct(data:any,sourceId:string){
-  const p=findJumiaData(data);
-  if(!p)return null;
-  const priceValue=p.price?.current??p.price?.value??p.price?.amount??p.price;
-  const images=imageValues(p.images||p.image||p.media).filter(isJumiaImage);
-  return {
-    product:p,
-    title:clean(p.name||p.title),
-    price:num(priceValue),
-    images
-  };
-}
-async function productApiFallback(sourceId:string){
-  if(!sourceId)return null;
-  const endpoints=[
-    "https://www.jumia.com.gh/_ms/catalog/product/detail?productId="+encodeURIComponent(sourceId),
-    "https://www.jumia.com.gh/api/catalog/product/detail?productId="+encodeURIComponent(sourceId)
-  ];
-  for(const url of endpoints){
-    try{
-      const r=await fetch(url,{
-        headers:{
-          "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36",
-          "Accept":"application/json,text/plain,*/*",
-          "Accept-Language":"en-US,en;q=0.9",
-          "Referer":"https://www.jumia.com.gh/"
-        },
-        cache:"no-store"
-      });
-      if(!r.ok)continue;
-      const text=await r.text();
-      if(!text)continue;
-      try{
-        const data=JSON.parse(text);
-        const normalized=normalizeJumiaApiProduct(data,sourceId);
-        if(normalized)return normalized;
-      }catch{}
-    }catch{}
-  }
-  return null;
+
+function productId(url:string){
+  return (url.match(/-(\\d+)\\.html(?:$|[?#])/i)||[])[1]||null;
 }
 
-async function microlinkFetch(url:string){
-  try{
-    const api="https://api.microlink.io/?url="+encodeURIComponent(url)+"&meta=true&markdown=true";
-    const r=await fetch(api,{headers:{"Accept":"application/json","User-Agent":"Myshop Jumia importer"},cache:"no-store"});
-    if(!r.ok)return null;
-    const json=await r.json();
-    if(json?.status!=="success")return null;
-    const d=json.data||{};
-    const image=typeof d.image==="string"?d.image:d.image?.url;
-    const markdown=typeof d.markdown==="string"?d.markdown:"";
-    const renderedHtml=typeof d.html==="string"?d.html:"";
-    const price=extractPrice(markdown+"\n"+(d.description||"")+"\n"+(d.title||""));
-    const images=[];
-    if(image)images.push(image);
-    images.push(...extractImages(markdown),...extractImages(renderedHtml));
-    return {
-      title:clean(d.title||meta(renderedHtml,"og:title")||""),
-      price,
-      images:images.filter(isJumiaImage)
-    };
-  }catch{return null}
-}
-
-async function jinaFetch(url:string){
-  const headers={
-    "Accept":"text/plain,text/markdown,*/*",
-    "X-Engine":"browser",
-    "X-Proxy":"gh",
-    "X-No-Cache":"true",
-    "X-Timeout":"30",
-    "X-User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36",
-    "X-Referer":"https://www.google.com/"
-  };
-  return fetchText("https://r.jina.ai/"+url,headers);
-}
-async function jinaSearch(query:string){
-  const headers={
-    "Accept":"text/plain,text/markdown,*/*",
-    "X-Engine":"browser",
-    "X-Proxy":"gh",
-    "X-No-Cache":"true",
-    "X-Timeout":"30"
-  };
-  return fetchText("https://s.jina.ai/?q="+encodeURIComponent(query),headers);
-}
-
-async function catalogFallback(normalized:string,sourceId:string){
-  const q=searchQueryFromUrl(normalized);
-  if(!q)return null;
-
-  // Jumia can block Render's IP while the same public page is available through
-  // a browser-rendered Reader proxy. Search the exact product id first so we do
-  // not accidentally import another product from the catalogue.
-  const exact=await jinaSearch("site:jumia.com.gh "+sourceId+" "+q);
-  if(exact.text){
-    const exactProduct=extractCatalogProduct(exact.text,sourceId);
-    if(exactProduct?.price!=null&&(exactProduct.images?.length||exactProduct.title))return exactProduct;
-  }
-
-  const url="https://www.jumia.com.gh/catalog/?q="+encodeURIComponent(q);
-  const r=await jinaFetch(url);
-  if(r.text){
-    const product=extractCatalogProduct(r.text,sourceId);
-    if(product)return product;
-  }
-
-  return null;
-}
 function titleFromUrl(url:string){
-  const m=url.match(/jumia\.com\.gh\/([^/?#]+?)-(\d+)\.html/i);
-  return m?clean(m[1].replace(/[-_]+/g," ").replace(/\b\w/g,(x:string)=>x.toUpperCase())):"";
+  const m=url.match(/jumia\\.com\\.gh\\/([^/?#]+?)-(\\d+)\\.html/i);
+  return m?clean(m[1].replace(/[-_]+/g," ").replace(/\\b\\w/g,(x:string)=>x.toUpperCase())):"";
 }
+
+function slugify(s:string){
+  return s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"").slice(0,90)||"jumia-product";
+}
+
 function imageValues(v:any):string[]{
   if(!v)return [];
   if(typeof v==="string")return [v];
@@ -201,55 +73,117 @@ function imageValues(v:any):string[]{
   if(typeof v==="object")return imageValues(v.url||v.contentUrl||v.src||v.originalUrl||v.image);
   return [];
 }
+
 function isJumiaImage(v:string){
   const x=clean(v).replace(/\\/g,"").replace(/\\\//g,"/");
-  return /^https?:\/\//i.test(x)&&/^(?:[^/]+\.)?(?:jumia\.(?:is|com\.gh)|static\.jumia\.com\.gh)\//i.test(x)&&
-    !/(?:favicon|logo|sprite|icon|placeholder)/i.test(x);
+  return /^https?:\\/\\//i.test(x)
+    && /(?:^|\\.)jumia\\.(?:is|com\\.gh)\\//i.test(x)
+    && /\\.(?:jpg|jpeg|png|webp)(?:[?#]|$)/i.test(x)
+    && !/(?:favicon|logo|sprite|icon|placeholder)/i.test(x);
 }
+
 function extractImages(source:string){
-  source=source.replace(/\\\\\(/g,"(").replace(/\\\\\)/g,")").replace(/\\\\\_/g,"_");
   const out:string[]=[];
   const add=(v:string)=>{
-    const x=clean(v).replace(/\\/g,"").replace(/\\\//g,"/").trim();
-    if(isJumiaImage(x)&&out.indexOf(x)===-1)out.push(x);
+    const x=clean(v).replace(/\\/g,"").replace(/\\\//g,"/").replace(/[),]+$/g,"");
+    if(isJumiaImage(x)&&!out.includes(x))out.push(x);
   };
-  const attr=/\b(?:src|data-src|data-original|data-image|data-lazy-src|data-original-src|content)=["']([^"']+)["']/gi;
+
+  const md=/!\\[[^\\]]*\\]\\((https?:\\/\\/[^\\s)]+)\\)/gi;
   let m:RegExpExecArray|null;
+  while((m=md.exec(source))!==null){add(m[1]);if(out.length>=30)return out;}
+
+  const attr=/\\b(?:src|data-src|data-original|data-image|data-lazy-src|data-original-src|content)=["']([^"']+)["']/gi;
   while((m=attr.exec(source))!==null){
-    m[1].split(/\s*,\s*|\s+/).forEach(add);
-    if(out.length>=40)break;
+    m[1].split(/\\s+/).forEach(add);
+    if(out.length>=30)return out;
   }
-  const urls=source.replace(/\\\//g,"/").match(/https?:\/\/[^\s"'<>]+/gi)||[];
-  for(const u of urls){add(u);if(out.length>=40)break}
+
+  const urls=source.replace(/\\\\\\//g,"/").match(/https?:\\/\\/[^\\s"'<>]+/gi)||[];
+  for(const u of urls){add(u);if(out.length>=30)break;}
   return out;
 }
-function parseEmbedded(html:string){
-  let product:any=null;
-  for(const x of jsonScripts(html)){product=product||findProduct(x)}
-  const next=/<script[^>]+id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i.exec(html);
-  if(next){try{product=product||findProduct(JSON.parse(next[1]))}catch{}}
-  return product;
-}
-function extractPrice(html:string){
+
+function extractPrice(source:string){
   const candidates=[
-    meta(html,"product:price:amount"),meta(html,"og:price:amount"),meta(html,"price"),
-    ...(html.match(/(?:GH₵|GHS|GHC|GH\s*₵|₵)\s*[0-9][0-9,\s]*(?:\.[0-9]{1,2})?/gi)||[])
+    meta(source,"product:price:amount"),
+    meta(source,"og:price:amount"),
+    meta(source,"price"),
+    ...(source.match(/(?:GH₵|GHS|GHC|GH\\s*₵|₵)\\s*[0-9][0-9,\\s]*(?:\\.[0-9]{1,2})?/gi)||[]),
+    ...(source.match(/(?:price|sale price|current price)\\s*[:\\-]?\\s*(?:GH₵|GHS|GHC|GH\\s*₵|₵)?\\s*[0-9][0-9,\\s]*(?:\\.[0-9]{1,2})?/gi)||[])
   ];
-  for(const x of candidates){const n=num(x);if(n!=null)return n}
+  for(const x of candidates){const n=num(x);if(n!=null)return n;}
   return null;
 }
+
 function readerData(text:string,url:string){
-  const title=(text.match(/^#\s+(.+)$/m)||text.match(/^(?:Title|Product name)\s*:\s*(.+)$/im)||text.match(/^\s*\*\*([^*]+)\*\*\s*$/m)||[])[1]||"";
-  const price=extractPrice(text);
-  return {title:clean(title),price,images:extractImages(text),url};
+  const title=(text.match(/^#\\s+(.+)$/m)
+    ||text.match(/^(?:Title|Product name)\\s*:\\s*(.+)$/im)
+    ||text.match(/^\\s*\\*\\*([^*]+)\\*\\*\\s*$/m)||[])[1]||"";
+  const links=(text.match(/https?:\\/\\/(?:www\\.)?jumia\\.com\\.gh\\/[^\\s)<>"']+/gi)||[]);
+  const id=productId(url);
+  const canonical=links.find(x=>!id||x.includes(id))||url;
+  const ratingMatch=text.match(/([0-5](?:\\.\\d)?)\\s*(?:out of 5|\\/5)/i);
+  const reviewMatch=text.match(/([0-9][0-9,]*)\\s*(?:ratings?|reviews?)/i);
+  return {
+    title:clean(title),
+    images:extractImages(text),
+    price:extractPrice(text),
+    rating:num(ratingMatch?.[1]),
+    reviewCount:Number(String(reviewMatch?.[1]||"0").replace(/,/g,""))||0,
+    description:clean(text.replace(/^#.*$/m,"").split("\\n\\n").find(x=>x.trim())||""),
+    url:canonical
+  };
 }
+
 async function fetchText(url:string,headers:Record<string,string>={}){
   try{
     const r=await fetch(url,{headers,cache:"no-store",redirect:"follow"});
-    if(!r.ok)return {status:r.status,text:""};
-    const text=await r.text();
-    return {status:r.status,text:text.length>200?text:""};
-  }catch{return {status:0,text:""}}
+    const text=r.ok?await r.text():"";
+    return {status:r.status,text:text.length>150?text:""};
+  }catch{return {status:0,text:""};}
+}
+
+async function jinaReader(url:string){
+  return fetchText("https://r.jina.ai/"+url,{
+    "Accept":"text/plain,text/markdown,*/*",
+    "User-Agent":"Mozilla/5.0",
+    "X-Engine":"browser",
+    "X-Proxy":"gh",
+    "X-No-Cache":"true",
+    "X-Timeout":"30",
+    "X-User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36"
+  });
+}
+
+async function jinaSearch(q:string){
+  return fetchText("https://s.jina.ai/?q="+encodeURIComponent(q),{
+    "Accept":"text/plain,text/markdown,*/*",
+    "User-Agent":"Mozilla/5.0",
+    "X-Engine":"browser",
+    "X-Proxy":"gh",
+    "X-No-Cache":"true",
+    "X-Timeout":"30"
+  });
+}
+
+async function catalogFallback(url:string,id:string){
+  const q=titleFromUrl(url).replace(/[-_]+/g," ").trim();
+  if(!q)return null;
+
+  const exact=await jinaSearch("site:jumia.com.gh "+id+" "+q);
+  if(exact.text){
+    const d=readerData(exact.text,url);
+    if(d.price!=null&&d.images.length)return d;
+  }
+
+  const catalog=await jinaReader("https://www.jumia.com.gh/catalog/?q="+encodeURIComponent(q));
+  if(catalog.text){
+    const d=readerData(catalog.text,url);
+    const hasId=id&&catalog.text.includes(id);
+    if(hasId&&d.images.length&&d.price!=null)return d;
+  }
+  return null;
 }
 
 export async function POST(req:NextRequest){
@@ -261,117 +195,176 @@ export async function POST(req:NextRequest){
 
   const body=await req.json();
   const input=typeof body?.url==="string"?body.url.trim():"";
-  const normalized=input.replace(/^http:\/\//i,"https://").replace(/^https:\/\/(?!www\.)jumia\.com\.gh\//i,"https://www.jumia.com.gh/");
-  if(!/^https:\/\/www\.jumia\.com\.gh\/[^?#]+-\d+\.html(?:[?#].*)?$/i.test(normalized)){
+  const normalized=input
+    .replace(/^http:\/\//i,"https://")
+    .replace(/^https:\/\/(?!www\\.)jumia\\.com\\.gh\\//i,"https://www.jumia.com.gh/");
+
+  if(!/^https:\/\/www\\.jumia\\.com\\.gh\\/[^?#]+-\\d+\\.html(?:[?#].*)?$/i.test(normalized)){
     return NextResponse.json({error:"Paste a Jumia Ghana product URL."},{status:400});
   }
 
-  const sourceId=productId(normalized);
-  let html="";
+  const id=productId(normalized);
   let directStatus=0;
+  let html="";
   let product:any=null;
   let fallback:any={};
 
-  const sources: Array<{url:string;headers:Record<string,string>}>=[
-    {url:normalized,headers:{"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36","Accept":"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8","Accept-Language":"en-US,en;q=0.9","Referer":"https://www.google.com/"}},
-    {url:"https://r.jina.ai/"+normalized,headers:{"User-Agent":"Mozilla/5.0","Accept":"text/plain,text/markdown,*/*","X-Engine":"browser","X-Proxy":"gh","X-No-Cache":"true","X-Timeout":"30","X-User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36","X-Referer":"https://www.google.com/"}},
-    {url:"https://www-jumia-com-gh.translate.goog/"+normalized.split("/").slice(3).join("/")+"?_x_tr_sl=auto&_x_tr_tl=en&_x_tr_hl=en",headers:{"User-Agent":"Mozilla/5.0","Accept":"text/html,application/xhtml+xml,*/*;q=0.8"}}
-  ];
-
-  for(const source of sources){
-    const r=await fetchText(source.url,source.headers);
-    if(source.url===normalized)directStatus=r.status;
-    if(!r.text)continue;
-    if(!html)html=r.text;
-    const candidate=parseEmbedded(r.text);
-    const candidateTitle=clean(candidate?.name||meta(r.text,"og:title")||meta(r.text,"twitter:title"));
-    const candidateImages=imageValues(candidate?.image).concat([meta(r.text,"og:image"),meta(r.text,"twitter:image")],extractImages(r.text)).filter(isJumiaImage);
-    const offers=Array.isArray(candidate?.offers)?candidate.offers[0]:candidate?.offers;
-    const candidatePrice=num(offers?.price??candidate?.price)??extractPrice(r.text);
-    if(candidate?.name||candidateTitle)product=product||candidate;
-    fallback={...fallback,title:fallback.title||candidateTitle,images:[...(fallback.images||[]),...candidateImages],price:fallback.price??candidatePrice};
-    if(product?.name&&candidateImages.length&&candidatePrice!=null)break;
+  // 1. Direct page. This is the fastest path when Jumia allows the Render request.
+  const direct=await fetchText(normalized,{
+    "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36",
+    "Accept":"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language":"en-US,en;q=0.9",
+    "Referer":"https://www.google.com/"
+  });
+  directStatus=direct.status;
+  if(direct.text){
+    html=direct.text;
+    product=findProduct(jsonLd(html));
+    fallback={
+      title:clean(product?.name||meta(html,"og:title")||meta(html,"twitter:title")),
+      images:imageValues(product?.image).concat([meta(html,"og:image"),meta(html,"twitter:image")],extractImages(html)).filter(isJumiaImage),
+      price:extractPrice(html),
+      rating:num(product?.aggregateRating?.ratingValue),
+      reviewCount:Number(product?.aggregateRating?.reviewCount||0)||0,
+      description:clean(product?.description||meta(html,"description"))
+    };
   }
 
+  // 2. Last-known-good Jina Reader path. Keep BOTH HTTPS and HTTP forms because
+  // Jumia/Reader have behaved differently for the two URL forms.
   if(!product?.name||!fallback.images?.length||fallback.price==null){
-    const browser=await microlinkFetch(normalized);
-    if(browser){
+    const readers=[normalized,"http://www.jumia.com.gh/"+normalized.split("/").slice(3).join("/")];
+    for(const target of readers){
+      const r=await jinaReader(target);
+      if(!r.text)continue;
+      const d=readerData(r.text,normalized);
       fallback={
         ...fallback,
-        title:fallback.title||browser.title,
-        images:[...(fallback.images||[]),...(browser.images||[])],
-        price:fallback.price??browser.price
+        title:fallback.title||d.title,
+        images:[...(fallback.images||[]),...d.images],
+        price:fallback.price??d.price,
+        rating:fallback.rating??d.rating,
+        reviewCount:fallback.reviewCount||d.reviewCount,
+        description:fallback.description||d.description
       };
-      if(!product?.name&&browser.title)product={name:browser.title};
+      if(fallback.images?.length&&fallback.price!=null)break;
     }
   }
 
-  if(!product?.name||!fallback.images?.length||fallback.price==null){
-    const apiProduct=sourceId?await productApiFallback(sourceId):null;
-    if(apiProduct){
-      product=product||apiProduct.product;
+  // 3. Catalogue fallback. Search the exact product id first, then the public
+  // Jumia catalogue through the browser reader.
+  if(!fallback.images?.length||fallback.price==null){
+    const d=await catalogFallback(normalized,id||"");
+    if(d){
       fallback={
         ...fallback,
-        title:fallback.title||apiProduct.title,
-        images:[...(fallback.images||[]),...(apiProduct.images||[])],
-        price:fallback.price??apiProduct.price
+        title:fallback.title||d.title,
+        images:[...(fallback.images||[]),...d.images],
+        price:fallback.price??d.price,
+        rating:fallback.rating??d.rating,
+        reviewCount:fallback.reviewCount||d.reviewCount,
+        description:fallback.description||d.description
       };
     }
   }
 
-  if(!product?.name||!fallback.images?.length||fallback.price==null){
-    const catalog=sourceId?await catalogFallback(normalized,sourceId):null;
-    if(catalog){
-      fallback={...fallback,title:fallback.title||catalog.title,images:[...(fallback.images||[]),...(catalog.images||[])],price:fallback.price??catalog.price};
+  // 4. Google Reader fallback. It is intentionally restricted to the exact
+  // product id so another Jumia product cannot be imported by accident.
+  if(!fallback.images?.length||fallback.price==null){
+    const q=encodeURIComponent((id||"")+" Jumia Ghana "+titleFromUrl(normalized));
+    const r=await jinaReader("https://www.google.com/search?q="+q);
+    if(r.text){
+      const d=readerData(r.text,normalized);
+      const hasId=!id||r.text.includes(id);
+      if(hasId){
+        fallback={
+          ...fallback,
+          title:fallback.title||d.title,
+          images:[...(fallback.images||[]),...d.images],
+          price:fallback.price??d.price,
+          rating:fallback.rating??d.rating,
+          reviewCount:fallback.reviewCount||d.reviewCount,
+          description:fallback.description||d.description
+        };
+      }
     }
   }
 
-  if(!product?.name||!fallback.images?.length||fallback.price==null){
-    const reader=await jinaFetch(normalized);
-    if(reader.text){
-      const d=readerData(reader.text,normalized);
-      fallback={...fallback,title:fallback.title||d.title,images:[...(fallback.images||[]),...d.images],price:fallback.price??d.price};
+  // 5. Google Translate fallback for the actual Jumia page.
+  if(!fallback.images?.length||fallback.price==null){
+    const translated="https://www-jumia-com-gh.translate.goog/"
+      +normalized.split("/").slice(3).join("/")
+      +"?_x_tr_sl=auto&_x_tr_tl=en&_x_tr_hl=en";
+    const r=await fetchText(translated,{"User-Agent":"Mozilla/5.0","Accept":"text/html,application/xhtml+xml,*/*;q=0.8"});
+    if(r.text){
+      if(!html)html=r.text;
+      const p=findProduct(jsonLd(r.text));
+      const d=readerData(r.text,normalized);
+      product=product||p;
+      fallback={
+        ...fallback,
+        title:fallback.title||p?.name||d.title||meta(r.text,"og:title"),
+        images:[...(fallback.images||[]),...imageValues(p?.image),...d.images,meta(r.text,"og:image")].filter(isJumiaImage),
+        price:fallback.price??num(p?.offers?.price)??d.price??extractPrice(r.text),
+        rating:fallback.rating??num(p?.aggregateRating?.ratingValue)??d.rating,
+        reviewCount:fallback.reviewCount||Number(p?.aggregateRating?.reviewCount||d.reviewCount||0)||0,
+        description:fallback.description||clean(p?.description||meta(r.text,"description")||d.description)
+      };
     }
   }
 
   const rawTitle=clean(product?.name||fallback.title||meta(html,"og:title")||meta(html,"twitter:title")||titleFromUrl(normalized));
-  const title=/^(search results|search|jumia)$/i.test(rawTitle)?"":rawTitle;
+  const title=/^(search results|search|jumia)$/i.test(rawTitle)||/^search results\\s*[-|]/i.test(rawTitle)?"":rawTitle;
+
   const offers=Array.isArray(product?.offers)?product.offers[0]:product?.offers;
-  const images=imageValues(product?.image).concat(fallback.images||[],meta(html,"og:image"),meta(html,"twitter:image"),extractImages(html))
+  const images=imageValues(product?.image)
+    .concat(fallback.images||[],meta(html,"og:image"),meta(html,"twitter:image"),extractImages(html))
     .map(clean).filter(isJumiaImage).filter((x,i,a)=>a.indexOf(x)===i);
-  const price=num(offers?.price)??num(product?.price)??fallback.price??extractPrice(html);
+
+  const price=num(offers?.price)
+    ??num(offers?.lowPrice)
+    ??num(product?.price)
+    ??fallback.price
+    ??extractPrice(html);
 
   if(!title||!images.length||price==null){
     const missing=[!title?"title":null,!images.length?"image":null,price==null?"price":null].filter(Boolean);
-    const reason=directStatus===403||directStatus===429
-      ?"Jumia blocked the server request."
+    const details=directStatus===403||directStatus===429
+      ?"Jumia blocked the direct Render request; all public fallback readers were also unable to return a complete record."
       :directStatus===404
-        ?"Jumia returned this product as unavailable (404)."
-        :"Jumia returned the page, but the required product fields could not be verified.";
-    return NextResponse.json({error:"Could not import this Jumia product.",details:reason,missing,product_id:sourceId},{status:422});
+        ?"Jumia returned 404 for this product."
+        :"The page was reached, but the required product fields could not be verified.";
+    return NextResponse.json({
+      error:"Could not import this Jumia product.",
+      details,
+      missing,
+      product_id:id
+    },{status:422});
   }
 
-  const canonical=clean(product?.url||meta(html,"og:url")||normalized.split("?")[0]);
-  const id=productId(canonical)||sourceId;
+  const canonical=clean(product?.url||meta(html,"og:url")||fallback.url||normalized.split("?")[0]);
+  const canonicalId=productId(canonical)||id;
   const rating=product?.aggregateRating;
-  const features=arr(product?.additionalProperty).map((x:any)=>({name:clean(x?.name),value:clean(x?.value)})).filter((x:any)=>x.name||x.value);
+  const features=arr(product?.additionalProperty)
+    .map((x:any)=>({name:clean(x?.name),value:clean(x?.value)}))
+    .filter((x:any)=>x.name||x.value);
   const specifications:Record<string,string>={};
   for(const x of features)if(x.name)specifications[x.name]=x.value;
 
   const payload={
-    jumia_product_id:id,
+    jumia_product_id:canonicalId,
     source_url:canonical,
     title,
-    slug:title.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"").slice(0,90)+"-"+id,
-    description:clean(product?.description||meta(html,"description")),
+    slug:slugify(title)+"-"+canonicalId,
+    description:clean(product?.description||fallback.description||meta(html,"description")),
     brand:typeof product?.brand==="object"?product.brand?.name:product?.brand||null,
     sku:product?.sku||null,
     price,
     compare_price:null,
     currency:offers?.priceCurrency||"GHS",
     discount_percent:null,
-    rating:num(rating?.ratingValue),
-    review_count:Number(rating?.reviewCount||rating?.ratingCount||0)||0,
+    rating:num(rating?.ratingValue)??fallback.rating??null,
+    review_count:Number(rating?.reviewCount||rating?.ratingCount||fallback.reviewCount||0)||0,
     stock_status:offers?.availability||null,
     images,
     features,
@@ -383,11 +376,11 @@ export async function POST(req:NextRequest){
     last_synced_at:new Date().toISOString()
   };
 
-  const existing=await s.from("jumia_products").select("id").eq("jumia_product_id",id).maybeSingle();
+  const existing=await s.from("jumia_products").select("id").eq("source_url",canonical).maybeSingle();
   const q=existing.data
     ?await s.from("jumia_products").update(payload).eq("id",existing.data.id).select("*").single()
     :await s.from("jumia_products").insert(payload).select("*").single();
 
   if(q.error)return NextResponse.json({error:q.error.message},{status:400});
-  return NextResponse.json({product:q.data,source:"jumia"});
+  return NextResponse.json({product:q.data,source:"url-fallback"});
 }
