@@ -113,8 +113,8 @@ export async function POST(req:NextRequest){
 
   const body=await req.json();
   const input=typeof body?.url==="string"?body.url.trim():"";
-  const normalized=input.replace(/^http:\/\//i,"https://").replace(/^https:\/\/(?!www\\.)jumia\\.com\\.gh\\//i,"https://www.jumia.com.gh/");
-  if(!/^https:\/\/www\\.jumia\\.com\\.gh\\/[^?#]+-\\d+\\.html(?:[?#].*)?$/i.test(normalized)){
+  const normalized=input.replace(/^http:\/\//i,"https://").replace(/^https:\/\/(?!www\.)jumia\.com\.gh\//i,"https://www.jumia.com.gh/");
+  if(!/^https:\/\/www\.jumia\.com\.gh\/[^?#]+-\d+\.html(?:[?#].*)?$/i.test(normalized)){
     return NextResponse.json({error:"Paste a Jumia Ghana product URL."},{status:400});
   }
 
