@@ -44,18 +44,18 @@ function num(v:any){
 }
 function productId(url:string){return (url.match(/-(\d+)\.html(?:$|[?#])/i)||[])[1]||null}
 function searchQueryFromUrl(url:string){
-  const m=url.match(/jumia\\.com\\.gh\\/([^/?#]+?)-\\d+\\.html/i);
-  return m?decodeURIComponent(m[1].replace(/[-_]+/g," ").replace(/%20/g," ")).trim():"";
+  const m=url.match(/jumia\.com\.gh\/([^/?#]+?)-\d+\.html/i);
+  return m?m[1].replace(/[-_]+/g," ").trim():"";
 }
 function extractCatalogProduct(html:string,sourceId:string){
-  const needle=new RegExp("(?:https?:\\\\/\\\\/www\\\\.jumia\\\\.com\\\\.gh)?[^\\\"'<>\\s]*-"+sourceId+"\\\\.html(?:[?#][^\\\"'<>\\s]*)?","i");
+  const needle=new RegExp("(?:https?:\\/\\/www\\.jumia\\.com\\.gh)?[^\\\"'<>\\s]*-"+sourceId+"\\.html(?:[?#][^\\\"'<>\\s]*)?","i");
   const match=needle.exec(html);
   if(!match)return null;
   const pos=match.index;
   const window=html.slice(Math.max(0,pos-5000),Math.min(html.length,pos+12000));
-  const title=(window.match(/(?:aria-label|title)=\"([^\"]+)\"/i)||window.match(/<h[1-6][^>]*>([\\s\\S]*?)<\\/h[1-6]>/i)||[])[1]||"";
+  const title=(window.match(/(?:aria-label|title)=[\"']([^\"']+)[\"']/i)||window.match(/<h[1-6][^>]*>([\\s\\S]*?)<\\/h[1-6]>/i)||[])[1]||"";
   const price=(window.match(/(?:GH₵|GHS|GHC|GH\\s*₵|₵)\\s*[0-9][0-9,\\s]*(?:\\.[0-9]{1,2})?/i)||[])[0]||"";
-  const image=(window.match(/(?:src|data-src|data-image|data-original)=\"([^\"]+)\"/i)||[])[1]||"";
+  const image=(window.match(/(?:src|data-src|data-image|data-original)=[\"']([^\"']+)[\"']/i)||[])[1]||"";
   return {title:clean(title.replace(/<[^>]+>/g," ")),price:num(price),images:isJumiaImage(image)?[clean(image)]:extractImages(window)};
 }
 async function catalogFallback(normalized:string,sourceId:string){
