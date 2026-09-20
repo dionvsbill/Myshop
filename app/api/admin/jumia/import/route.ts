@@ -175,7 +175,7 @@ async function microlinkFetch(url:string){
     return {
       html:rendered,
       title:clean(p?.name||d.title||""),
-      images:[...new Set(images)],
+      images:Array.from(new Set(images)),
       price,
       rating:num(p?.aggregateRating?.ratingValue),
       reviewCount:Number(p?.aggregateRating?.reviewCount||0)||0,
